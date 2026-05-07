@@ -11,13 +11,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { FinancialBackground } from "@/components/FinancialBackground";
 import { ThemedText } from "@/components/themed-text";
 import { hexToRgba } from "@/constants/theme";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { shareLines } from "@/lib/shareText";
 
 interface QuickActionModalProps {
   visible: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  /** When set, header shows a share control that shares this text. */
+  shareMessage?: string | null;
 }
 
 /**
@@ -28,11 +32,17 @@ export default function QuickActionModal({
   onClose,
   title,
   children,
+  shareMessage,
 }: QuickActionModalProps) {
+  const { t } = useLanguage();
   const backgroundColor = useThemeColor({}, "background");
   const textColor = useThemeColor({}, "text");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
   const borderColor = useThemeColor({}, "border");
+  const primaryColor = useThemeColor({}, "primary");
+
+  const trimmedShare = shareMessage?.trim();
+  const canShare = Boolean(trimmedShare);
 
   return (
     <Modal
@@ -85,7 +95,24 @@ export default function QuickActionModal({
             >
               {title}
             </ThemedText>
-            <View style={styles.headerSpacer} />
+            {canShare ? (
+              <TouchableOpacity
+                onPress={() => void shareLines([trimmedShare])}
+                style={[
+                  styles.headerIconButton,
+                  {
+                    backgroundColor: hexToRgba(backgroundColor, 0.55),
+                    borderColor,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t("common.share")}
+              >
+                <Ionicons name="share-outline" size={20} color={primaryColor} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.headerSpacer} />
+            )}
           </View>
           <View style={styles.body}>{children}</View>
         </View>
@@ -113,6 +140,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  headerIconButton: {
     width: 36,
     height: 36,
     borderRadius: 18,

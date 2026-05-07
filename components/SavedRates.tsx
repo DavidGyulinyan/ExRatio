@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { ThemedText } from "./themed-text";
 import CurrencyFlag from "./CurrencyFlag";
@@ -32,6 +32,7 @@ interface SavedRatesProps {
   inModal?: boolean; // Hide header when used inside DashboardModal
   forceUseHook?: boolean; // Force use hook data instead of prop
   showDeleteButtons?: boolean; // Show delete buttons for each item
+  onShareableMessageChange?: (message: string | null) => void;
 }
 
 export default function SavedRates({
@@ -49,6 +50,7 @@ export default function SavedRates({
   inModal = false,
   forceUseHook = false,
   showDeleteButtons = false,
+  onShareableMessageChange,
 }: SavedRatesProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -69,6 +71,33 @@ export default function SavedRates({
   const displayTitle = title || `⭐ ${t('saved.shortTitle')}`;
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!inModal || !onShareableMessageChange) return;
+    const list = forceUseHook
+      ? hookSavedRates
+      : propSavedRates || (user ? hookSavedRates : []);
+    if (!list.length) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const lines = [
+      t("saved.title"),
+      ...list.map(
+        (r) =>
+          `• ${r.from_currency} → ${r.to_currency}: ${Number(r.rate).toFixed(4)}`
+      ),
+    ];
+    onShareableMessageChange(lines.join("\n"));
+  }, [
+    inModal,
+    onShareableMessageChange,
+    forceUseHook,
+    hookSavedRates,
+    propSavedRates,
+    user,
+    t,
+  ]);
 
   const handleDeleteRate = async (id: string) => {
     if (onDeleteRate) {

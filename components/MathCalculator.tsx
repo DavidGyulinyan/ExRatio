@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   Modal,
   StyleSheet,
@@ -16,8 +15,9 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 import { useCalculatorHistory } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { shareLines } from "@/lib/shareText";
 
-type CalculatorMode = "basic" | "advanced" | "loan";
+type CalculatorMode = "basic" | "advanced";
 
 interface MathCalculatorProps {
   visible: boolean;
@@ -26,27 +26,6 @@ interface MathCalculatorProps {
   onAddToConverter?: (result: number) => void;
   autoCloseAfterCalculation?: boolean;
   inModal?: boolean; // Hide header when used inside DashboardModal
-}
-
-interface LoanToolsPanelProps {
-  surfaceSecondaryColor: string;
-  borderColor: string;
-  primaryColor: string;
-  textColor: string;
-  textSecondaryColor: string;
-  errorColor: string;
-  surfaceColor: string;
-  loanPrincipal: string;
-  loanRateAnnual: string;
-  loanTermMonths: string;
-  loanError: string | null;
-  loanMonthly: number | null;
-  loanTotalInterest: number | null;
-  loanTotalPaid: number | null;
-  onPrincipalChange: (value: string) => void;
-  onRateChange: (value: string) => void;
-  onTermChange: (value: string) => void;
-  onCalculate: () => void;
 }
 
 const LOAN_HISTORY_ARROW = "\u2192";
@@ -78,132 +57,6 @@ function formatCalculatorHistoryDisplay(record: {
     return `${trimExpr} = ${String(r)}`;
   }
   return trimExpr;
-}
-
-/** Defined outside MathCalculator so React keeps a stable component type (TextInput keeps focus). */
-function LoanToolsPanel({
-  surfaceSecondaryColor,
-  borderColor,
-  primaryColor,
-  textColor,
-  textSecondaryColor,
-  errorColor,
-  surfaceColor,
-  loanPrincipal,
-  loanRateAnnual,
-  loanTermMonths,
-  loanError,
-  loanMonthly,
-  loanTotalInterest,
-  loanTotalPaid,
-  onPrincipalChange,
-  onRateChange,
-  onTermChange,
-  onCalculate,
-}: LoanToolsPanelProps) {
-  const { t } = useLanguage();
-  const loanButtonLabelColor = useThemeColor({}, "textInverse");
-
-  return (
-    <View
-      style={[
-        styles.advancedPanel,
-        {
-          backgroundColor: surfaceColor,
-          borderColor,
-        },
-      ]}
-    >
-      <View style={styles.advancedPanelTitleRow}>
-        <View style={styles.advancedPanelTitleLeft}>
-          <Ionicons name="cash-outline" size={18} color={textSecondaryColor} />
-          <Text style={[styles.advancedPanelTitle, { color: textColor }]}>
-            {t("calculator.loanTitle")}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-        {t("calculator.loanPrincipal")}
-      </Text>
-      <TextInput
-        style={[
-          styles.loanInput,
-          { color: textColor, borderColor, backgroundColor: surfaceSecondaryColor },
-        ]}
-        value={loanPrincipal}
-        onChangeText={onPrincipalChange}
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={textSecondaryColor}
-        accessibilityLabel={t("calculator.loanPrincipal")}
-      />
-
-      <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-        {t("calculator.loanAnnualRate")}
-      </Text>
-      <TextInput
-        style={[
-          styles.loanInput,
-          { color: textColor, borderColor, backgroundColor: surfaceSecondaryColor },
-        ]}
-        value={loanRateAnnual}
-        onChangeText={onRateChange}
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={textSecondaryColor}
-        accessibilityLabel={t("calculator.loanAnnualRate")}
-      />
-
-      <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-        {t("calculator.loanTermMonths")}
-      </Text>
-      <TextInput
-        style={[
-          styles.loanInput,
-          { color: textColor, borderColor, backgroundColor: surfaceSecondaryColor },
-        ]}
-        value={loanTermMonths}
-        onChangeText={onTermChange}
-        keyboardType="number-pad"
-        placeholder="0"
-        placeholderTextColor={textSecondaryColor}
-        accessibilityLabel={t("calculator.loanTermMonths")}
-      />
-
-      {loanError ? (
-        <Text style={[styles.loanErrorText, { color: errorColor }]}>{loanError}</Text>
-      ) : null}
-
-      <TouchableOpacity
-        style={[styles.loanCalcButton, { backgroundColor: primaryColor }]}
-        onPress={() => onCalculate()}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel={t("calculator.loanCalculate")}
-      >
-        <Text style={[styles.loanCalcButtonText, { color: loanButtonLabelColor }]}>
-          {t("calculator.loanCalculate")}
-        </Text>
-      </TouchableOpacity>
-
-      {loanMonthly !== null &&
-      loanTotalInterest !== null &&
-      loanTotalPaid !== null ? (
-        <View style={styles.loanResults}>
-          <Text style={[styles.loanResultLine, { color: textColor }]}>
-            {t("calculator.loanTotalInterest")}: {loanTotalInterest}
-          </Text>
-          <Text style={[styles.loanResultLine, { color: textColor }]}>
-            {t("calculator.loanTotalPaid")}: {loanTotalPaid}
-          </Text>
-          <Text style={[styles.loanFootnote, { color: textSecondaryColor }]}>
-            {t("calculator.loanFootnote")}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
 }
 
 export default function MathCalculator({
@@ -241,15 +94,7 @@ export default function MathCalculator({
   const [showRoundingOptions, setShowRoundingOptions] = useState(false);
   const [mode, setMode] = useState<CalculatorMode>("basic");
 
-  const [loanPrincipal, setLoanPrincipal] = useState("");
-  const [loanRateAnnual, setLoanRateAnnual] = useState("");
-  const [loanTermMonths, setLoanTermMonths] = useState("");
-  const [loanError, setLoanError] = useState<string | null>(null);
-  const [loanMonthly, setLoanMonthly] = useState<number | null>(null);
-  const [loanTotalInterest, setLoanTotalInterest] = useState<number | null>(null);
-  const [loanTotalPaid, setLoanTotalPaid] = useState<number | null>(null);
-
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   const isSmallScreen = height < 700;
   const isMediumScreen = height >= 700 && height < 800;
 
@@ -274,15 +119,6 @@ export default function MathCalculator({
       setCalculationHistory(prev => prev);
     }
   }, [visible, user, supabaseHistory]);
-
-  useEffect(() => {
-    if (mode !== "loan") {
-      setLoanMonthly(null);
-      setLoanTotalInterest(null);
-      setLoanTotalPaid(null);
-      setLoanError(null);
-    }
-  }, [mode]);
 
   const getResponsiveValue = (small: number, medium: number, large: number) => {
     if (isSmallScreen) return small;
@@ -454,88 +290,6 @@ export default function MathCalculator({
   };
 
   const roundForDisplay = (n: number) => parseFloat(n.toFixed(roundingDecimalPlaces));
-
-  const parseLoanNumber = (raw: string) => {
-    const s = raw.replace(/\s/g, "").replace(/,/g, "");
-    const n = parseFloat(s);
-    return Number.isFinite(n) ? n : NaN;
-  };
-
-  const parseLoanMonths = (raw: string) => {
-    const s = raw.replace(/\s/g, "").replace(/,/g, "");
-    const n = parseInt(s, 10);
-    return Number.isFinite(n) ? n : NaN;
-  };
-
-  const computeLoan = async () => {
-    setLoanError(null);
-    const principal = parseLoanNumber(loanPrincipal);
-    const annualPct = parseLoanNumber(loanRateAnnual);
-    const months = parseLoanMonths(loanTermMonths);
-
-    if (!Number.isFinite(principal) || principal <= 0) {
-      setLoanError(t("calculator.loanErrPrincipal"));
-      return;
-    }
-    if (!Number.isFinite(annualPct) || annualPct < 0) {
-      setLoanError(t("calculator.loanErrRate"));
-      return;
-    }
-    if (!Number.isFinite(months) || months <= 0) {
-      setLoanError(t("calculator.loanErrTerm"));
-      return;
-    }
-
-    const monthlyRate = annualPct / 100 / 12;
-    let payment: number;
-    if (monthlyRate === 0) {
-      payment = principal / months;
-    } else {
-      const factor = Math.pow(1 + monthlyRate, months);
-      payment = (principal * monthlyRate * factor) / (factor - 1);
-    }
-
-    const totalPaidRaw = payment * months;
-    const totalInterestRaw = totalPaidRaw - principal;
-
-    if (!Number.isFinite(payment) || payment <= 0 || !Number.isFinite(totalPaidRaw)) {
-      setLoanError(t("calculator.loanErrRate"));
-      return;
-    }
-
-    const paymentR = roundForDisplay(payment);
-    const interestR = roundForDisplay(totalInterestRaw);
-    const paidR = roundForDisplay(totalPaidRaw);
-
-    setLoanMonthly(paymentR);
-    setLoanTotalInterest(interestR);
-    setLoanTotalPaid(paidR);
-
-    const historyLine = tWithParams("calculator.loanHistoryLine", {
-      principal: String(roundForDisplay(principal)),
-      rate: String(roundForDisplay(annualPct)),
-      months: String(months),
-      payment: String(paymentR),
-    });
-    addToHistory(historyLine);
-
-    if (user) {
-      try {
-        await saveCalculation(historyLine, paymentR, "loan", {
-          roundingDecimalPlaces,
-          principal,
-          annualPct,
-          months,
-        });
-      } catch (e) {
-        console.error("Error saving loan calculation:", e);
-      }
-    }
-
-    if (onResult) {
-      onResult(paymentR);
-    }
-  };
 
   const applySqrt = () => {
     const currentValue = parseFloat(display);
@@ -876,13 +630,6 @@ export default function MathCalculator({
   };
 
   const getDisplayText = () => {
-    if (mode === "loan") {
-      if (loanMonthly !== null) {
-        return String(loanMonthly);
-      }
-      return t("calculator.loanDisplayHint");
-    }
-
     // Always show current display value (which includes intermediate results)
     if (calculationComplete) {
       return equation;
@@ -907,12 +654,6 @@ export default function MathCalculator({
   };
 
   const getDisplayFontSize = () => {
-    if (mode === "loan") {
-      if (loanMonthly !== null) {
-        return getResponsiveValue(22, 26, 30);
-      }
-      return getResponsiveValue(12, 13, 14);
-    }
     const textLength = getDisplayText().length;
     if (textLength > 15) return getResponsiveValue(13, 15, 17);
     if (textLength > 10) return getResponsiveValue(16, 18, 21);
@@ -1137,7 +878,21 @@ export default function MathCalculator({
                 color: textColor,
               }
             ]}>{t('calculator.title')}</Text>
-            <View style={{ width: 60 }} />
+            <TouchableOpacity
+              onPress={() => void shareLines([t("calculator.title"), getDisplayText()])}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.share")}
+              style={[
+                styles.closeButton,
+                {
+                  backgroundColor: surfaceSecondaryColor,
+                  borderColor,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Ionicons name="share-outline" size={22} color={primaryColor} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1165,11 +920,10 @@ export default function MathCalculator({
                   fontSize: getDisplayFontSize(),
                   lineHeight: getDisplayFontSize() * 1.15,
                   color: textColor,
-                  textAlign: mode === "loan" && loanMonthly === null ? "center" : "right",
+                  textAlign: "right",
                 },
               ]}
-              numberOfLines={mode === "loan" && loanMonthly === null ? 3 : 4}
-              adjustsFontSizeToFit={mode === "loan" && loanMonthly === null}
+              numberOfLines={4}
               minimumFontScale={0.75}
             >
               {getDisplayText()}
@@ -1200,24 +954,6 @@ export default function MathCalculator({
                 name={mode === "advanced" ? "calculator-outline" : "sparkles-outline"}
                 size={24}
                 color={mode === "advanced" ? textColor : textSecondaryColor}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.toolbarIconButton,
-                {
-                  backgroundColor: mode === "loan" ? surfaceColor : surfaceSecondaryColor,
-                  borderColor,
-                },
-              ]}
-              onPress={() => setMode((m) => (m === "loan" ? "basic" : "loan"))}
-              accessibilityRole="button"
-              accessibilityLabel={t("calculator.loan")}
-            >
-              <Ionicons
-                name="wallet-outline"
-                size={24}
-                color={mode === "loan" ? textColor : textSecondaryColor}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -1265,10 +1001,7 @@ export default function MathCalculator({
                   { backgroundColor: successColor, borderColor: successColor },
                 ]}
                 onPress={() => {
-                  const result =
-                    mode === "loan" && loanMonthly !== null
-                      ? loanMonthly
-                      : parseFloat(display);
+                  const result = parseFloat(display);
                   if (!isNaN(result) && result !== 0) {
                     onAddToConverter(result);
                     onClose();
@@ -1303,37 +1036,6 @@ export default function MathCalculator({
           showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {mode === "loan" && (
-            <LoanToolsPanel
-              surfaceSecondaryColor={surfaceSecondaryColor}
-              borderColor={borderColor}
-              primaryColor={primaryColor}
-              textColor={textColor}
-              textSecondaryColor={textSecondaryColor}
-              errorColor={errorColor}
-              surfaceColor={surfaceColor}
-              loanPrincipal={loanPrincipal}
-              loanRateAnnual={loanRateAnnual}
-              loanTermMonths={loanTermMonths}
-              loanError={loanError}
-              loanMonthly={loanMonthly}
-              loanTotalInterest={loanTotalInterest}
-              loanTotalPaid={loanTotalPaid}
-              onPrincipalChange={(v) => {
-                setLoanPrincipal(v);
-                setLoanError(null);
-              }}
-              onRateChange={(v) => {
-                setLoanRateAnnual(v);
-                setLoanError(null);
-              }}
-              onTermChange={(v) => {
-                setLoanTermMonths(v);
-                setLoanError(null);
-              }}
-              onCalculate={() => void computeLoan()}
-            />
-          )}
           {mode === "basic" && (
             <>
               <View style={[
@@ -1803,42 +1505,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.15,
     marginBottom: 8,
     marginTop: 0,
-  },
-  loanInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    marginBottom: 6,
-  },
-  loanErrorText: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  loanCalcButton: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 6,
-    marginBottom: 4,
-  },
-  loanCalcButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  loanResults: {
-    marginTop: 10,
-    gap: 6,
-  },
-  loanResultLine: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  loanFootnote: {
-    fontSize: 11,
-    fontStyle: "italic",
-    marginTop: 4,
   },
 });

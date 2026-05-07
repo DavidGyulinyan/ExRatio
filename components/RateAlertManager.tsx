@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   TextInput,
@@ -41,6 +41,7 @@ interface RateAlertManagerProps {
   onRatesUpdate: () => void;
   currenciesData?: any;
   inModal?: boolean; // Hide header when used inside DashboardModal
+  onShareableMessageChange?: (message: string | null) => void;
 }
 
 interface AlertFormData {
@@ -56,6 +57,7 @@ export default function RateAlertManager({
   onRatesUpdate,
   currenciesData,
   inModal = false,
+  onShareableMessageChange,
 }: RateAlertManagerProps) {
   const { t, tWithParams } = useLanguage();
   const { user } = useAuth();
@@ -91,6 +93,25 @@ export default function RateAlertManager({
     isActive: true,
   });
 
+  useEffect(() => {
+    if (!inModal || !onShareableMessageChange) return;
+    if (!rateAlerts.length) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const lines = [
+      t('rateAlerts.title'),
+      ...rateAlerts.map((a) => {
+        const dir =
+          a.condition === 'above'
+            ? t('rateAlerts.direction.above')
+            : t('rateAlerts.direction.below');
+        const status = a.is_active ? t('rateAlerts.active') : t('common.disabled');
+        return `• ${a.from_currency}→${a.to_currency}: ${dir} ${a.target_rate} — ${status}`;
+      }),
+    ];
+    onShareableMessageChange(lines.join('\n'));
+  }, [inModal, onShareableMessageChange, rateAlerts, t]);
 
   const handleEditAlert = (alert: RateAlert) => {
     setEditingAlertId(alert.id);

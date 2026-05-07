@@ -8,8 +8,12 @@ import MultiCurrencyConverter from "@/components/MultiCurrencyConverter";
 import SavedRates from "@/components/SavedRates";
 import RateAlertManager from "@/components/RateAlertManager";
 import MathCalculator from "@/components/MathCalculator";
+import LoanCalculator from "@/components/LoanCalculator";
 import OnboardingGuide from "@/components/OnboardingGuide";
 import CurrencyRateCharts from "@/components/CurrencyRateCharts";
+import ArmeniaFinanceModal, {
+  type FinanceScreen,
+} from "@/components/ArmeniaFinanceModal";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useThemeColor } from "@/hooks/use-theme-color";
@@ -21,19 +25,16 @@ import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
 import { hexToRgba } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import {
   Alert,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -63,39 +64,6 @@ const POPULAR_CURRENCIES = [
   "AED",
 ];
 
-const DASHBOARD_FEATURES = [
-  {
-    icon: "stats-chart-outline" as const,
-    titleKey: "feature.multiCurrency.title",
-    descKey: "feature.multiCurrency.desc",
-    action: "multi" as const,
-  },
-  {
-    icon: "calculator-outline" as const,
-    titleKey: "feature.calculator.title",
-    descKey: "feature.calculator.desc",
-    action: "calculator" as const,
-  },
-  {
-    icon: "phone-portrait-outline" as const,
-    titleKey: "feature.offline.title",
-    descKey: "feature.offline.desc",
-    action: null,
-  },
-  {
-    icon: "globe-outline" as const,
-    titleKey: "feature.location.title",
-    descKey: "feature.location.desc",
-    action: "converter" as const,
-  },
-  {
-    icon: "cloud-download-outline" as const,
-    titleKey: "feature.caching.title",
-    descKey: "feature.caching.desc",
-    action: null,
-  },
-] as const;
-
 export default function HomeScreen() {
   const { t } = useLanguage();
   const router = useRouter();
@@ -110,7 +78,6 @@ export default function HomeScreen() {
   const textInverseColor = useThemeColor({}, "textInverse");
   const pageBackgroundColor = useThemeColor({}, "background");
   const surfaceColor = useThemeColor({}, "surface");
-  const surfaceSecondaryColor = useThemeColor({}, "surfaceSecondary");
   const textColor = useThemeColor({}, "text");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
   const borderColor = useThemeColor({}, "border");
@@ -123,8 +90,18 @@ export default function HomeScreen() {
   const [showSavedRates, setShowSavedRates] = useState(false);
   const [showRateAlerts, setShowRateAlerts] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showLoanCalculator, setShowLoanCalculator] = useState(false);
   const [showConverter, setShowConverter] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
+  const [shareConverter, setShareConverter] = useState<string | null>(null);
+  const [shareMulti, setShareMulti] = useState<string | null>(null);
+  const [shareSaved, setShareSaved] = useState<string | null>(null);
+  const [shareAlerts, setShareAlerts] = useState<string | null>(null);
+  const [shareCharts, setShareCharts] = useState<string | null>(null);
+  const [shareAmFinance, setShareAmFinance] = useState<string | null>(null);
+  const [showArmeniaFinance, setShowArmeniaFinance] = useState(false);
+  const [armeniaFinanceScreen, setArmeniaFinanceScreen] =
+    useState<FinanceScreen>("menu");
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [currenciesData, setCurrenciesData] = useState<any>(null);
@@ -132,44 +109,6 @@ export default function HomeScreen() {
   const [multiCurrencyLoading, setMultiCurrencyLoading] = useState(false);
   const [savedRatesMaxVisible, setSavedRatesMaxVisible] = useState(4);
   const [refreshing, setRefreshing] = useState(false);
-  const { width: windowWidth } = useWindowDimensions();
-  const featureCardWidth = Math.min(300, Math.max(260, windowWidth * 0.78));
-  const featureCardGap = 12;
-  const featuresCarouselRef = useRef<ScrollView>(null);
-  const featuresCarouselScrollX = useRef(0);
-  const featuresCarouselViewportW = useRef(0);
-  const featuresCarouselContentW = useRef(0);
-
-  const handleFeaturesCarouselScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      featuresCarouselScrollX.current = e.nativeEvent.contentOffset.x;
-    },
-    []
-  );
-
-  const showMoreFeatures = useCallback(() => {
-    const viewport = featuresCarouselViewportW.current;
-    const content = featuresCarouselContentW.current;
-    const step = featureCardWidth + featureCardGap;
-    if (!viewport || content <= viewport + 8) {
-      return;
-    }
-    const maxX = Math.max(0, content - viewport);
-    const x = featuresCarouselScrollX.current;
-    let nextX = x + step;
-    if (nextX > maxX) {
-      nextX = x >= maxX - 8 ? 0 : maxX;
-    }
-    featuresCarouselRef.current?.scrollTo({ x: nextX, animated: true });
-  }, [featureCardWidth, featureCardGap]);
-
-  const handleFeaturePress = (
-    action: (typeof DASHBOARD_FEATURES)[number]["action"]
-  ) => {
-    if (action === "multi") setShowMultiCurrency(true);
-    else if (action === "calculator") setShowCalculator(true);
-    else if (action === "converter") setShowConverter(true);
-  };
 
   const closeAllQuickModals = useCallback(() => {
     setShowConverter(false);
@@ -179,7 +118,22 @@ export default function HomeScreen() {
     setShowRateAlerts(false);
     setShowCharts(false);
     setShowCalculator(false);
+    setShowLoanCalculator(false);
+    setShowArmeniaFinance(false);
+    setShareConverter(null);
+    setShareMulti(null);
+    setShareSaved(null);
+    setShareAlerts(null);
+    setShareCharts(null);
+    setShareAmFinance(null);
   }, []);
+
+  const openArmeniaFinance = useCallback((screen: FinanceScreen = "menu") => {
+    closeAllQuickModals();
+    setCurrentView("dashboard");
+    setArmeniaFinanceScreen(screen);
+    setShowArmeniaFinance(true);
+  }, [closeAllQuickModals]);
 
   const openQuickFromMenu = useCallback(
     (open: () => void) => {
@@ -198,8 +152,10 @@ export default function HomeScreen() {
       openSavedRates: () => openQuickFromMenu(() => setShowSavedRates(true)),
       openRateAlerts: () => openQuickFromMenu(() => setShowRateAlerts(true)),
       openCalculator: () => openQuickFromMenu(() => setShowCalculator(true)),
+      openLoanCalculator: () => openQuickFromMenu(() => setShowLoanCalculator(true)),
+      openArmeniaFinance: () => openQuickFromMenu(() => openArmeniaFinance("menu")),
     }),
-    [openQuickFromMenu]
+    [openQuickFromMenu, openArmeniaFinance]
   );
 
   useEffect(() => {
@@ -349,14 +305,7 @@ export default function HomeScreen() {
         >
           <View style={styles.headerTopRow}>
             <View style={styles.heroBlock}>
-              <Logo size={44} showText={false} />
-              <ThemedText
-                type="subtitle"
-                style={[styles.heroTitle, { color: textColor }]}
-                numberOfLines={1}
-              >
-                {t("app.title")}
-              </ThemedText>
+              <Logo size={40} showText={false} />
             </View>
             <BurgerMenu quickActions={burgerQuickActions} />
           </View>
@@ -371,148 +320,6 @@ export default function HomeScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          <View
-            style={[
-              styles.featuresSection,
-              {
-                backgroundColor: surfaceColor,
-                borderColor: borderColor,
-                borderLeftWidth: 4,
-                borderLeftColor: primaryColor,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.featuresBanner,
-                { backgroundColor: surfaceSecondaryColor },
-              ]}
-            >
-              <View
-                style={[
-                  styles.featuresBannerIcon,
-                  { backgroundColor: surfaceColor },
-                ]}
-              >
-                <Ionicons name="sparkles" size={20} color={primaryColor} />
-              </View>
-              <View style={styles.featuresBannerText}>
-                <ThemedText
-                  type="defaultSemiBold"
-                  style={[styles.featuresBannerTitle, { color: textColor }]}
-                >
-                  {t("dashboard.features")}
-                </ThemedText>
-                <ThemedText
-                  type="caption"
-                  style={{ color: textSecondaryColor }}
-                  numberOfLines={2}
-                >
-                  {t("dashboard.features.description")}
-                </ThemedText>
-              </View>
-            </View>
-
-            <ScrollView
-              ref={featuresCarouselRef}
-              horizontal
-              nestedScrollEnabled
-              showsHorizontalScrollIndicator
-              decelerationRate="fast"
-              contentContainerStyle={styles.featuresCarouselContent}
-              accessibilityLabel={t("dashboard.features")}
-              onScroll={handleFeaturesCarouselScroll}
-              scrollEventThrottle={16}
-              onLayout={(e) => {
-                featuresCarouselViewportW.current = e.nativeEvent.layout.width;
-              }}
-              onContentSizeChange={(w) => {
-                featuresCarouselContentW.current = w;
-              }}
-            >
-              {DASHBOARD_FEATURES.map((row) => (
-                <TouchableOpacity
-                  key={row.titleKey}
-                  activeOpacity={row.action ? 0.88 : 1}
-                  onPress={() => row.action && handleFeaturePress(row.action)}
-                  style={[
-                    styles.featureCarouselCard,
-                    {
-                      width: featureCardWidth,
-                      borderColor: borderColor,
-                      backgroundColor: surfaceSecondaryColor,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.featureIconWrap,
-                      { backgroundColor: surfaceColor },
-                    ]}
-                  >
-                    <Ionicons name={row.icon} size={24} color={primaryColor} />
-                  </View>
-                  <ThemedText
-                    type="defaultSemiBold"
-                    numberOfLines={2}
-                    style={[styles.featureCardTitle, { color: textColor }]}
-                  >
-                    {t(row.titleKey)}
-                  </ThemedText>
-                  <ThemedText
-                    type="caption"
-                    numberOfLines={3}
-                    style={[styles.featureCardDesc, { color: textSecondaryColor }]}
-                  >
-                    {t(row.descKey)}
-                  </ThemedText>
-                  {row.action ? (
-                    <View style={styles.featureCardCta}>
-                      <ThemedText
-                        type="caption"
-                        style={{ color: primaryColor, fontWeight: "700" }}
-                      >
-                        {t("common.more")}
-                      </ThemedText>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color={primaryColor}
-                      />
-                    </View>
-                  ) : (
-                    <View style={styles.featureCardSpacer} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.featuresSwipeHint}
-              onPress={showMoreFeatures}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={t("dashboard.features.tapNext")}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={14}
-                color={textSecondaryColor}
-              />
-              <ThemedText
-                type="caption"
-                style={[styles.featuresSwipeHintText, { color: textSecondaryColor }]}
-              >
-                {t("dashboard.features.tapNext")}
-              </ThemedText>
-              <Ionicons
-                name="chevron-forward"
-                size={14}
-                color={textSecondaryColor}
-              />
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.quickActionsContainer}>
             <ThemedText
               type="defaultSemiBold"
@@ -606,6 +413,97 @@ export default function HomeScreen() {
                   <ThemedText
                     type="caption"
                     numberOfLines={2}
+                    ellipsizeMode="tail"
+                    style={[styles.quickTileLabel, { color: textColor }]}
+                  >
+                    {t(item.labelKey)}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.amFinanceSection}>
+            <ThemedText
+              type="defaultSemiBold"
+              style={[styles.quickActionsTitle, { color: textColor }]}
+            >
+              {t("amFinance.sectionTitle")}
+            </ThemedText>
+            <View style={styles.quickActionsGrid}>
+              {(
+                [
+                  {
+                    id: "paidLeave" as const,
+                    labelKey: "amFinance.card.paidLeave",
+                    icon: "umbrella-outline" as const,
+                    screen: "paidLeave" as const,
+                  },
+                  {
+                    id: "maternity" as const,
+                    labelKey: "amFinance.card.maternity",
+                    icon: "heart-outline" as const,
+                    screen: "maternity" as const,
+                  },
+                  {
+                    id: "amSalary" as const,
+                    labelKey: "amFinance.card.salary",
+                    icon: "cash-outline" as const,
+                    screen: "salary" as const,
+                  },
+                  {
+                    id: "deposit" as const,
+                    labelKey: "amFinance.card.deposit",
+                    icon: "trending-up-outline" as const,
+                    screen: "deposit" as const,
+                  },
+                  {
+                    id: "loanCalc" as const,
+                    labelKey: "amFinance.card.loan",
+                    icon: "wallet-outline" as const,
+                    isLoan: true as const,
+                  },
+                ] as const
+              ).map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.quickTile,
+                    {
+                      backgroundColor: hexToRgba(pageBackgroundColor, 0.52),
+                      borderColor,
+                      borderWidth: 1,
+                    },
+                  ]}
+                  onPress={() => {
+                    if ("isLoan" in item && item.isLoan) {
+                      openQuickFromMenu(() => setShowLoanCalculator(true));
+                    } else {
+                      openArmeniaFinance(item.screen);
+                    }
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.quickTileIconWrap,
+                      {
+                        backgroundColor: "transparent",
+                        borderWidth: 1,
+                        borderColor: hexToRgba(borderColor, 0.55),
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={item.icon}
+                      size={24}
+                      color={textSecondaryColor}
+                    />
+                  </View>
+                  <ThemedText
+                    type="caption"
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
                     style={[styles.quickTileLabel, { color: textColor }]}
                   >
                     {t(item.labelKey)}
@@ -621,12 +519,17 @@ export default function HomeScreen() {
 
         <QuickActionModal
           visible={showConverter}
-          onClose={() => setShowConverter(false)}
+          onClose={() => {
+            setShowConverter(false);
+            setShareConverter(null);
+          }}
           title={t("converter.title")}
+          shareMessage={shareConverter}
         >
           <CurrencyConverter
             onNavigateToDashboard={() => setShowConverter(false)}
             inModal={true}
+            onShareableMessageChange={setShareConverter}
           />
         </QuickActionModal>
 
@@ -635,8 +538,10 @@ export default function HomeScreen() {
           onClose={() => {
             setShowMultiCurrency(false);
             setMultiCurrencyShowAllTargets(false);
+            setShareMulti(null);
           }}
           title={t("converter.multiCurrency.section")}
+          shareMessage={shareMulti}
         >
           {!currenciesData ? (
             <View style={styles.emptyState}>
@@ -670,6 +575,7 @@ export default function HomeScreen() {
               inModal={true}
               showAllTargets={multiCurrencyShowAllTargets}
               onShowMore={() => setMultiCurrencyShowAllTargets(true)}
+              onShareableMessageChange={setShareMulti}
             />
           )}
         </QuickActionModal>
@@ -679,8 +585,10 @@ export default function HomeScreen() {
           onClose={() => {
             setShowSavedRates(false);
             setSavedRatesMaxVisible(4);
+            setShareSaved(null);
           }}
           title={t("saved.title")}
+          shareMessage={shareSaved}
         >
           <ScrollView
             style={{ flex: 1, backgroundColor: "transparent" }}
@@ -707,14 +615,19 @@ export default function HomeScreen() {
               title=""
               containerStyle={{ marginBottom: 0 }}
               inModal={true}
+              onShareableMessageChange={setShareSaved}
             />
           </ScrollView>
         </QuickActionModal>
 
         <QuickActionModal
           visible={showRateAlerts}
-          onClose={() => setShowRateAlerts(false)}
+          onClose={() => {
+            setShowRateAlerts(false);
+            setShareAlerts(null);
+          }}
           title={t("rateAlerts.title")}
+          shareMessage={shareAlerts}
         >
           <RateAlertManager
             savedRates={savedRates.map((rate) => ({
@@ -731,17 +644,23 @@ export default function HomeScreen() {
             }}
             currenciesData={currenciesData}
             inModal={true}
+            onShareableMessageChange={setShareAlerts}
           />
         </QuickActionModal>
 
         <QuickActionModal
           visible={showCharts}
-          onClose={() => setShowCharts(false)}
+          onClose={() => {
+            setShowCharts(false);
+            setShareCharts(null);
+          }}
           title={t("charts.title")}
+          shareMessage={shareCharts}
         >
           <CurrencyRateCharts
             currencies={currencyList.length ? currencyList : POPULAR_CURRENCIES}
             inModal
+            onShareableMessageChange={setShareCharts}
           />
         </QuickActionModal>
 
@@ -750,6 +669,27 @@ export default function HomeScreen() {
           onClose={() => setShowCalculator(false)}
           autoCloseAfterCalculation={false}
         />
+
+        <LoanCalculator
+          visible={showLoanCalculator}
+          onClose={() => setShowLoanCalculator(false)}
+        />
+
+        <QuickActionModal
+          visible={showArmeniaFinance}
+          onClose={() => {
+            setShowArmeniaFinance(false);
+            setArmeniaFinanceScreen("menu");
+            setShareAmFinance(null);
+          }}
+          title={t("amFinance.sectionTitle")}
+          shareMessage={shareAmFinance}
+        >
+          <ArmeniaFinanceModal
+            initialScreen={armeniaFinanceScreen}
+            onShareableMessageChange={setShareAmFinance}
+          />
+        </QuickActionModal>
       </ThemedView>
     );
   };
@@ -811,12 +751,6 @@ const styles = StyleSheet.create({
     gap: 14,
     minWidth: 0,
   },
-  heroTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.4,
-    ...(Platform.OS === "android" ? { includeFontPadding: false } : null),
-  },
 
   dashboardScrollView: {
     flex: 1,
@@ -831,6 +765,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 28,
   },
+  amFinanceSection: {
+    marginBottom: 28,
+  },
   quickActionsTitle: {
     fontSize: 17,
     marginBottom: 14,
@@ -843,10 +780,11 @@ const styles = StyleSheet.create({
   },
   quickTile: {
     width: "48%",
+    maxWidth: "48%",
     borderRadius: 18,
     paddingVertical: 16,
     paddingHorizontal: 14,
-    alignItems: "flex-start",
+    alignItems: "stretch",
     gap: 10,
     overflow: "hidden",
     shadowColor: "#000",
@@ -856,6 +794,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   quickTileIconWrap: {
+    alignSelf: "flex-start",
     width: 44,
     height: 44,
     borderRadius: 14,
@@ -866,117 +805,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "600",
+    width: "100%",
+    flexShrink: 1,
   },
 
-  featuresSection: {
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  featuresBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 14,
-  },
-  featuresBannerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  featuresBannerText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  featuresBannerTitle: {
-    fontSize: 18,
-    letterSpacing: -0.2,
-  },
-  featuresScrollCue: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
-    paddingHorizontal: 2,
-  },
-  featuresScrollCueIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  featuresScrollCueText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "600",
-  },
-  featuresCarouselContent: {
-    paddingBottom: 6,
-    paddingRight: 6,
-    gap: 0,
-  },
-  featureCarouselCard: {
-    marginRight: 12,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    minHeight: 200,
-  },
-  featureIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  featureCardTitle: {
-    fontSize: 15,
-    lineHeight: 20,
-    marginBottom: 6,
-    minHeight: 40,
-  },
-  featureCardDesc: {
-    flex: 1,
-    lineHeight: 18,
-  },
-  featureCardCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 12,
-  },
-  featureCardSpacer: {
-    height: 28,
-    marginTop: 12,
-  },
-  featuresSwipeHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 12,
-    paddingTop: 4,
-  },
-  featuresSwipeHintText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
   bottomSpacer: {
     height: 60,
   },

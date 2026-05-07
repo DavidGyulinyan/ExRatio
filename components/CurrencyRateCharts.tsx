@@ -25,6 +25,7 @@ type Props = {
   days?: number;
   /** When true, outer shell is transparent (e.g. QuickActionModal + FinancialBackground). */
   inModal?: boolean;
+  onShareableMessageChange?: (message: string | null) => void;
 };
 
 type PeriodKey = "7D" | "30D" | "90D" | "1Y";
@@ -50,6 +51,7 @@ export default function CurrencyRateCharts({
   defaultTarget = "EUR",
   days = 30,
   inModal = false,
+  onShareableMessageChange,
 }: Props) {
   const { t } = useLanguage();
   const { currency: locationCurrency, loading: locationLoading } =
@@ -146,6 +148,56 @@ export default function CurrencyRateCharts({
       : undefined;
   const minRate = values.length ? Math.min(...values) : undefined;
   const maxRate = values.length ? Math.max(...values) : undefined;
+
+  useEffect(() => {
+    if (!inModal || !onShareableMessageChange) return;
+    if (!baseCurrency || !targetCurrency || baseCurrency === targetCurrency) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const periodLabel = t(`chart.timePeriods.${period}`);
+    const lines: string[] = [
+      t("charts.title"),
+      `${baseCurrency} → ${targetCurrency}`,
+      periodLabel,
+    ];
+    if (loading) {
+      onShareableMessageChange(lines.join("\n"));
+      return;
+    }
+    if (error) {
+      lines.push(error);
+      onShareableMessageChange(lines.join("\n"));
+      return;
+    }
+    if (!hasChart || current === undefined) {
+      onShareableMessageChange(lines.join("\n"));
+      return;
+    }
+    lines.push(`${t("chart.currentRate")}: ${formatRate(current)}`);
+    if (changeAbs !== undefined && first !== undefined) {
+      const pctPart =
+        changePct !== undefined
+          ? ` (${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%)`
+          : "";
+      lines.push(`${t("chart.rateChange")}: ${formatRate(changeAbs)}${pctPart}`);
+    }
+    onShareableMessageChange(lines.join("\n"));
+  }, [
+    inModal,
+    onShareableMessageChange,
+    baseCurrency,
+    targetCurrency,
+    period,
+    loading,
+    error,
+    hasChart,
+    current,
+    first,
+    changeAbs,
+    changePct,
+    t,
+  ]);
 
   const [selectedPoint, setSelectedPoint] = useState<{
     value: number;

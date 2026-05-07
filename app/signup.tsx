@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,9 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage, Language } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { hexToRgba, FormField } from '@/constants/theme';
 import Logo from '@/components/Logo';
@@ -32,18 +31,15 @@ function SignUpScreen() {
    const [confirmPassword, setConfirmPassword] = useState('');
    const [passwordVisible, setPasswordVisible] = useState(false);
    const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-   const [selectedLanguage, setSelectedLanguage] = useState('en');
-   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
    const [loading, setLoading] = useState(false);
 
    const { signUp } = useAuth();
-   const { t, language, setLanguage } = useLanguage();
+   const { t } = useLanguage();
    const router = useRouter();
 
    // Theme colors
    const backgroundColor = useThemeColor({}, 'background');
    const surfaceColor = useThemeColor({}, 'surface');
-   const surfaceSecondaryColor = useThemeColor({}, 'surfaceSecondary');
    const primaryColor = useThemeColor({}, 'primary');
    const accentColor = useThemeColor({}, 'accent');
    const textColor = useThemeColor({}, 'text');
@@ -191,104 +187,7 @@ function SignUpScreen() {
       fontSize: 14,
       fontWeight: '600',
     },
-    pickerContainer: {
-      position: 'relative',
-    },
-    pickerButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderWidth: 1,
-      borderColor: borderColor,
-      borderRadius: FormField.radiusInput,
-      paddingHorizontal: FormField.padH,
-      paddingVertical: FormField.padV,
-      backgroundColor: surfaceColor,
-    },
-    pickerButtonText: {
-      fontSize: FormField.fontSize,
-      fontWeight: FormField.fontWeight,
-      color: textColor,
-      flex: 1,
-    },
-    modalOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-    },
-    languagePickerModal: {
-      backgroundColor: surfaceColor,
-      borderRadius: 20,
-      width: '90%',
-      maxWidth: 400,
-      maxHeight: '70%',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 10,
-      elevation: 5,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 16,
-      gap: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: borderColor,
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: textColor,
-    },
-    closeButton: {
-      padding: 4,
-    },
-    languageList: {
-      maxHeight: 300,
-    },
-    languageOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: borderColor,
-    },
-    languageOptionSelected: {
-      backgroundColor: hexToRgba(primaryColor, 0.1),
-    },
-    languageOptionText: {
-      fontSize: 16,
-      color: textColor,
-    },
-    languageOptionTextSelected: {
-      color: primaryColor,
-      fontWeight: '600',
-    },
-  }), [backgroundColor, surfaceColor, surfaceSecondaryColor, primaryColor, accentColor, textColor, textSecondaryColor, borderColor]);
-
-  useEffect(() => {
-    setSelectedLanguage(language);
-  }, [language]);
-
-  const getLanguageDisplayName = (lang: string) => {
-    const languageNames: { [key: string]: string } = {
-      'en': 'English',
-      'hy': 'Հայերեն (Armenian)',
-      'ru': 'Русский (Russian)',
-      'es': 'Español (Spanish)',
-      'zh': '中文 (Chinese)',
-      'hi': 'हिन्दी (Hindi)'
-    };
-    return languageNames[lang] || lang;
-  };
+  }), [backgroundColor, surfaceColor, primaryColor, accentColor, textColor, textSecondaryColor, borderColor]);
 
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
@@ -363,26 +262,6 @@ function SignUpScreen() {
                   placeholderTextColor={textSecondaryColor}
                   autoCapitalize="none"
                 />
-              </View>
-
-              <View
-                style={[
-                  styles.fieldPanel,
-                  { borderColor, backgroundColor: hexToRgba(accentColor, 0.1) },
-                ]}
-              >
-                <Text style={styles.label}>{t('signup.preferredLanguage')}</Text>
-                <View style={styles.pickerContainer}>
-                  <TouchableOpacity
-                    style={styles.pickerButton}
-                    onPress={() => setShowLanguagePicker(true)}
-                  >
-                    <Text style={styles.pickerButtonText}>
-                      {getLanguageDisplayName(selectedLanguage)}
-                    </Text>
-                    <Ionicons name="chevron-down" size={20} color={textSecondaryColor} />
-                  </TouchableOpacity>
-                </View>
               </View>
 
               <View
@@ -478,66 +357,13 @@ function SignUpScreen() {
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t('auth.alreadyHaveAccount')}</Text>
               <TouchableOpacity onPress={() => router.push('/signin')}>
-                <Text style={styles.signInLink}>Sign In</Text>
+                <Text style={styles.signInLink}>{t('signin.signIn')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Language Picker Modal */}
-      {showLanguagePicker && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.languagePickerModal}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowLanguagePicker(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-              >
-                <Ionicons name="arrow-back" size={24} color={textSecondaryColor} />
-              </TouchableOpacity>
-              <Text style={[styles.modalTitle, { flex: 1, textAlign: 'center' }]}>Select Language</Text>
-              <View style={{ width: 36 }} />
-            </View>
-
-            <ScrollView style={styles.languageList}>
-              {[
-                { code: 'en', name: 'English' },
-                { code: 'hy', name: 'Հայերեն (Armenian)' },
-                { code: 'ru', name: 'Русский (Russian)' },
-                { code: 'es', name: 'Español (Spanish)' },
-                { code: 'zh', name: '中文 (Chinese)' },
-                { code: 'hi', name: 'हिन्दी (Hindi)' }
-              ].map((lang) => (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[
-                    styles.languageOption,
-                    selectedLanguage === lang.code && styles.languageOptionSelected
-                  ]}
-                  onPress={async () => {
-                    await setLanguage(lang.code as Language);
-                    setSelectedLanguage(lang.code);
-                    setShowLanguagePicker(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.languageOptionText,
-                    selectedLanguage === lang.code && styles.languageOptionTextSelected
-                  ]}>
-                    {lang.name}
-                  </Text>
-                  {selectedLanguage === lang.code && (
-                    <Ionicons name="checkmark" size={20} color={primaryColor} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
