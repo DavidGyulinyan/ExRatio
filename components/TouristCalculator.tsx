@@ -37,14 +37,129 @@ export default function TouristCalculator({
   const borderColor = useThemeColor({}, "border");
   const primaryColor = useThemeColor({}, "primary");
 
-  const [amountStr, setAmountStr] = useState("1000");
+  // Keep initial values empty so "0" is shown only as placeholder.
+  const [amountStr, setAmountStr] = useState("");
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [useManualRate, setUseManualRate] = useState(false);
   const [manualRateStr, setManualRateStr] = useState("");
-  const [tipPctStr, setTipPctStr] = useState("0");
-  const [discountPctStr, setDiscountPctStr] = useState("0");
+  const [tipPctStr, setTipPctStr] = useState("");
+  const [discountPctStr, setDiscountPctStr] = useState("");
   const [cachedRates, setCachedRates] = useState<any>(null);
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
+
+  const clearAllInputs = () => {
+    setAmountStr("");
+    setDiscountPctStr("");
+    setTipPctStr("");
+    setManualRateStr("");
+  };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const storage = getAsyncStorage();
+        const [savedAmount, savedDiscount, savedTip, savedCurrency, savedManualRate, savedUseManual] =
+          await Promise.all([
+            storage.getItem("touristCalc.amount"),
+            storage.getItem("touristCalc.discountPct"),
+            storage.getItem("touristCalc.tipPct"),
+            storage.getItem("touristCalc.fromCurrency"),
+            storage.getItem("touristCalc.manualRate"),
+            storage.getItem("touristCalc.useManualRate"),
+          ]);
+
+        if (!alive) return;
+
+        if (typeof savedAmount === "string") setAmountStr(savedAmount === "0" ? "" : savedAmount);
+        if (typeof savedDiscount === "string") setDiscountPctStr(savedDiscount === "0" ? "" : savedDiscount);
+        if (typeof savedTip === "string") setTipPctStr(savedTip === "0" ? "" : savedTip);
+        if (typeof savedManualRate === "string") setManualRateStr(savedManualRate === "0" ? "" : savedManualRate);
+        if (typeof savedCurrency === "string" && savedCurrency) setFromCurrency(savedCurrency);
+        if (typeof savedUseManual === "string") setUseManualRate(savedUseManual === "1");
+      } catch {
+        // ignore
+      } finally {
+        if (alive) setPrefsHydrated(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    (async () => {
+      try {
+        const storage = getAsyncStorage();
+        await storage.setItem("touristCalc.fromCurrency", fromCurrency);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [fromCurrency, prefsHydrated]);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    (async () => {
+      try {
+        const storage = getAsyncStorage();
+        await storage.setItem("touristCalc.amount", amountStr);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [amountStr, prefsHydrated]);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    (async () => {
+      try {
+        const storage = getAsyncStorage();
+        await storage.setItem("touristCalc.discountPct", discountPctStr);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [discountPctStr, prefsHydrated]);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    (async () => {
+      try {
+        const storage = getAsyncStorage();
+        await storage.setItem("touristCalc.tipPct", tipPctStr);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [tipPctStr, prefsHydrated]);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    (async () => {
+      try {
+        const storage = getAsyncStorage();
+        await storage.setItem("touristCalc.manualRate", manualRateStr);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [manualRateStr, prefsHydrated]);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    (async () => {
+      try {
+        const storage = getAsyncStorage();
+        await storage.setItem("touristCalc.useManualRate", useManualRate ? "1" : "0");
+      } catch {
+        // ignore
+      }
+    })();
+  }, [useManualRate, prefsHydrated]);
 
   useEffect(() => {
     let alive = true;
@@ -178,6 +293,21 @@ export default function TouristCalculator({
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
         />
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={clearAllInputs}
+          style={[
+            styles.clearBtn,
+            { backgroundColor: surfaceSecondaryColor, borderColor },
+          ]}
+          accessibilityRole="button"
+        >
+          <Ionicons name="trash-outline" size={18} color={textSecondaryColor} />
+          <ThemedText type="defaultSemiBold" style={{ color: textSecondaryColor }}>
+            Մաքրել բոլորը
+          </ThemedText>
+        </TouchableOpacity>
 
         <ThemedText type="caption" style={{ color: textSecondaryColor, marginBottom: 6 }}>
           {t("touristCalc.field.currency")}
@@ -388,6 +518,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 999,
     borderWidth: 1,
+  },
+  clearBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
   },
 });
 
