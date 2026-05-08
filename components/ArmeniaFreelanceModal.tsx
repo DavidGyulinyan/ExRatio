@@ -1132,7 +1132,7 @@ function InvoiceView(props: {
       </ThemedText>
 
       <Field
-        label="Invoice number"
+        label={t("amFreelance.invoice.invoiceNumber")}
         value={invoiceNumber}
         onChangeText={setInvoiceNumber}
         borderColor={borderColor}
@@ -1141,7 +1141,7 @@ function InvoiceView(props: {
         textSecondaryColor={textSecondaryColor}
       />
       <Field
-        label="Freelancer / business"
+        label={t("amFreelance.invoice.sellerName")}
         value={sellerName}
         onChangeText={setSellerName}
         borderColor={borderColor}
@@ -1150,7 +1150,7 @@ function InvoiceView(props: {
         textSecondaryColor={textSecondaryColor}
       />
       <Field
-        label="Client"
+        label={t("amFreelance.invoice.clientName")}
         value={clientName}
         onChangeText={setClientName}
         borderColor={borderColor}
@@ -1159,7 +1159,7 @@ function InvoiceView(props: {
         textSecondaryColor={textSecondaryColor}
       />
       <Field
-        label="Service"
+        label={t("amFreelance.invoice.serviceDescription")}
         value={serviceDescription}
         onChangeText={setServiceDescription}
         borderColor={borderColor}
@@ -1168,7 +1168,7 @@ function InvoiceView(props: {
         textSecondaryColor={textSecondaryColor}
       />
       <Field
-        label="Amount"
+        label={t("amFreelance.invoice.amount")}
         value={amountStr}
         onChangeText={setAmountStr}
         borderColor={borderColor}
@@ -1178,7 +1178,7 @@ function InvoiceView(props: {
       />
 
       <ThemedText type="caption" style={{ color: textSecondaryColor, marginBottom: 6 }}>
-        Currency
+        {t("amFreelance.invoice.currency")}
       </ThemedText>
       <View style={styles.pillsRow}>
         {currencies.map((c) => {
@@ -1204,7 +1204,7 @@ function InvoiceView(props: {
       </View>
 
       <View style={styles.switchRow}>
-        <ThemedText style={{ color: textColor, flex: 1 }}>VAT / ԱԱՀ (20%)</ThemedText>
+        <ThemedText style={{ color: textColor, flex: 1 }}>{t("amFreelance.invoice.vatToggle")}</ThemedText>
         <TouchableOpacity
           onPress={() => setVatOn((v) => !v)}
           style={[
@@ -1234,7 +1234,7 @@ function InvoiceView(props: {
           </ThemedText>
           <View style={{ gap: 8, marginTop: 10 }}>
             <RowKV
-              label="Subtotal"
+              label={t("amFreelance.invoice.subtotal")}
               value={formatMoney(locale, totals.subtotal, invoiceDraft.currency)}
               textColor={textColor}
               textSecondaryColor={textSecondaryColor}
@@ -1250,7 +1250,7 @@ function InvoiceView(props: {
               />
             ) : null}
             <RowKV
-              label="Total"
+              label={t("amFreelance.invoice.total")}
               value={formatMoney(locale, totals.total, invoiceDraft.currency)}
               textColor={textColor}
               textSecondaryColor={textSecondaryColor}
@@ -1280,7 +1280,7 @@ function InvoiceView(props: {
             >
               <Ionicons name="save-outline" size={18} color={primaryColor} />
               <ThemedText style={{ color: primaryColor, fontWeight: "700" }}>
-                {saving ? "Saving…" : t("amFreelance.invoice.save")}
+                {saving ? t("amFreelance.invoice.saving") : t("amFreelance.invoice.save")}
               </ThemedText>
             </TouchableOpacity>
 
@@ -1305,7 +1305,10 @@ function InvoiceView(props: {
                 void (async () => {
                   try {
                     if (!(await Sharing.isAvailableAsync())) {
-                      Alert.alert("Sharing unavailable", "Sharing is not available on this device.");
+                      Alert.alert(
+                        t("amFreelance.invoice.sharingUnavailableTitle"),
+                        t("amFreelance.invoice.sharingUnavailableBody")
+                      );
                       return;
                     }
                     const { uri } = await Print.printToFileAsync({
@@ -1318,7 +1321,10 @@ function InvoiceView(props: {
                       dialogTitle: `Invoice ${invoiceDraft.invoiceNumber}`,
                     });
                   } catch (e: any) {
-                    Alert.alert("Export failed", e?.message ?? "Unable to export PDF.");
+                    Alert.alert(
+                      t("amFreelance.invoice.exportFailedTitle"),
+                      e?.message ?? t("amFreelance.invoice.exportFailedBody")
+                    );
                   }
                 })();
               }}
@@ -1342,11 +1348,11 @@ function InvoiceView(props: {
           </ThemedText>
 
           <ThemedText type="defaultSemiBold" style={{ color: textColor, marginTop: 18 }}>
-            Saved invoices
+            {t("amFreelance.invoice.savedInvoices")}
           </ThemedText>
           {savedInvoices.length === 0 ? (
             <ThemedText style={{ color: textSecondaryColor, marginTop: 8 }}>
-              No saved invoices yet.
+              {t("amFreelance.invoice.noSavedInvoices")}
             </ThemedText>
           ) : (
             <View style={{ gap: 10, marginTop: 10 }}>
@@ -1393,7 +1399,7 @@ function InvoiceView(props: {
                           }}
                         >
                           <ThemedText type="caption" style={{ color: textSecondaryColor, fontWeight: "700" }}>
-                            Delete
+                            {t("amFreelance.invoice.delete")}
                           </ThemedText>
                         </TouchableOpacity>
                       </View>
@@ -1403,7 +1409,9 @@ function InvoiceView(props: {
               })}
               {savedInvoices.length > 8 ? (
                 <ThemedText type="caption" style={{ color: textSecondaryColor }}>
-                  Showing 8 of {savedInvoices.length}.
+                  {t("amFreelance.invoice.showingSome")
+                    .replace("{shown}", "8")
+                    .replace("{total}", String(savedInvoices.length))}
                 </ThemedText>
               ) : null}
             </View>
@@ -1511,16 +1519,18 @@ function DashboardView(props: {
           style={[styles.actionBtn, { borderColor, backgroundColor: surfaceColor, paddingVertical: 8 }]}
         >
           <Ionicons name="refresh-outline" size={18} color={primaryColor} />
-          <ThemedText style={{ color: primaryColor, fontWeight: "700" }}>Refresh</ThemedText>
+          <ThemedText style={{ color: primaryColor, fontWeight: "700" }}>{t("amFreelance.dashboard.refresh")}</ThemedText>
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ThemedText style={{ color: textSecondaryColor, marginTop: 12 }}>Loading…</ThemedText>
+        <ThemedText style={{ color: textSecondaryColor, marginTop: 12 }}>
+          {t("amFreelance.dashboard.loading")}
+        </ThemedText>
       ) : (
         <>
           <ThemedText type="caption" style={{ color: textSecondaryColor, marginTop: 14 }}>
-            Currency
+            {t("amFreelance.dashboard.currency")}
           </ThemedText>
           <View style={[styles.pillsRow, { marginBottom: 6 }]}>
             {(["AMD", "USD", "EUR", "RUB", "GEL"] as InvoiceCurrency[]).map((c) => {
@@ -1547,13 +1557,13 @@ function DashboardView(props: {
 
           <View style={{ gap: 8, marginTop: 10 }}>
             <RowKV
-              label="This month (paid)"
+              label={t("amFreelance.dashboard.thisMonthPaid")}
               value={formatMoney(locale, stats.totalThisMonth, selectedCurrency)}
               textColor={textColor}
               textSecondaryColor={textSecondaryColor}
             />
             <RowKV
-              label="Pending invoices"
+              label={t("amFreelance.dashboard.pendingInvoices")}
               value={String(stats.pending)}
               textColor={textColor}
               textSecondaryColor={textSecondaryColor}
@@ -1561,7 +1571,7 @@ function DashboardView(props: {
           </View>
 
           <ThemedText type="defaultSemiBold" style={{ color: textColor, marginTop: 18 }}>
-            Income (6 months)
+            {t("amFreelance.dashboard.income6Months")}
           </ThemedText>
           <View
             style={{ marginTop: 12, overflow: "hidden", borderRadius: 16 }}
@@ -1595,7 +1605,7 @@ function DashboardView(props: {
 
           {invoices.length === 0 ? (
             <ThemedText style={{ color: textSecondaryColor, marginTop: 12 }}>
-              No invoices yet — create one to populate the dashboard.
+              {t("amFreelance.dashboard.noInvoicesHint")}
             </ThemedText>
           ) : null}
         </>
@@ -1648,12 +1658,16 @@ function RemindersView(props: {
       </ThemedText>
 
       <ThemedText type="caption" style={{ color: textSecondaryColor, marginBottom: 10 }}>
-        Monthly finance reminder (default: day 20, 10:00)
+        {t("amFreelance.reminders.monthlyTitle")} ({t("amFreelance.reminders.monthlySubtitle")})
       </ThemedText>
 
       <View style={styles.switchRow}>
         <ThemedText style={{ color: textColor, flex: 1 }}>
-          {enabled ? "Enabled" : enabled === false ? "Disabled" : "…"}
+          {enabled
+            ? t("amFreelance.reminders.enabled")
+            : enabled === false
+              ? t("amFreelance.reminders.disabled")
+              : "…"}
         </ThemedText>
         <TouchableOpacity
           disabled={busy || enabled === null}
@@ -1661,10 +1675,18 @@ function RemindersView(props: {
             void (async () => {
               if (enabled === null) return;
               setBusy(true);
-              const ok = enabled ? await disableMonthlyFinanceReminder() : await enableMonthlyFinanceReminder();
+              const ok = enabled
+                ? await disableMonthlyFinanceReminder()
+                : await enableMonthlyFinanceReminder({
+                    title: t("amFreelance.reminders.notificationTitle"),
+                    body: t("amFreelance.reminders.notificationBody"),
+                  });
               setBusy(false);
               if (!ok) {
-                Alert.alert("Reminder", "Could not update reminder. Check notification permissions.");
+                Alert.alert(
+                  t("amFreelance.reminders.updateFailedTitle"),
+                  t("amFreelance.reminders.updateFailedBody")
+                );
               }
               await refresh();
             })();
@@ -1695,7 +1717,9 @@ function RemindersView(props: {
         onPress={() => void refresh()}
       >
         <Ionicons name="refresh-outline" size={18} color={primaryColor} />
-        <ThemedText style={{ color: primaryColor, fontWeight: "700" }}>Refresh status</ThemedText>
+        <ThemedText style={{ color: primaryColor, fontWeight: "700" }}>
+          {t("amFreelance.reminders.refreshStatus")}
+        </ThemedText>
       </TouchableOpacity>
     </View>
   );

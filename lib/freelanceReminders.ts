@@ -56,6 +56,8 @@ export async function enableMonthlyFinanceReminder(input?: {
   dayOfMonth?: number;
   hour?: number;
   minute?: number;
+  title?: string;
+  body?: string;
 }): Promise<boolean> {
   const Notifications = await getNotificationsModule();
   if (!Notifications) return false;
@@ -67,12 +69,14 @@ export async function enableMonthlyFinanceReminder(input?: {
   const day = Math.min(28, Math.max(1, Math.floor(input?.dayOfMonth ?? 20)));
   const hour = Math.min(23, Math.max(0, Math.floor(input?.hour ?? 10)));
   const minute = Math.min(59, Math.max(0, Math.floor(input?.minute ?? 0)));
+  const title = input?.title ?? "Finance reminder";
+  const body = input?.body ?? "Review invoices, taxes, and cashflow for this month.";
 
   try {
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: "Finance reminder",
-        body: "Review invoices, taxes, and cashflow for this month.",
+        title,
+        body,
         data: { type: "freelance_monthly_finance" },
       },
       trigger: { day, hour, minute, repeats: true },
