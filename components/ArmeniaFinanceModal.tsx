@@ -10,11 +10,9 @@ import {
   UIManager,
   View,
 } from "react-native";
-import { LineChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/themed-text";
-import { hexToRgba } from "@/constants/theme";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import {
@@ -979,7 +977,6 @@ function DepositView({
   onShareableMessageChange?: (message: string | null) => void;
 }) {
   const surfaceColor = useThemeColor({}, "surface");
-  const [depositLineChartW, setDepositLineChartW] = useState(0);
   const [principalStr, setPrincipalStr] = useState("1000000");
   const [rateStr, setRateStr] = useState("9");
   const [monthsStr, setMonthsStr] = useState("12");
@@ -1143,47 +1140,7 @@ function DepositView({
             <RowKV label={t("amFinance.deposit.taxAmount")} value={formatAmd(result.interestTax)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
             <RowKV label={t("amFinance.deposit.netProfit")} value={formatAmd(result.netProfitAfterTax)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
           </View>
-          <ThemedText
-            type="defaultSemiBold"
-            numberOfLines={2}
-            ellipsizeMode="tail"
-            style={{ color: textColor, marginTop: 18 }}
-          >
-            {t("amFinance.deposit.chartTitle")}
-          </ThemedText>
-          <View
-            style={styles.depositChartWrap}
-            onLayout={({ nativeEvent }) => {
-              const w = Math.floor(nativeEvent.layout.width);
-              if (w > 0) {
-                setDepositLineChartW((prev) => (prev === w ? prev : w));
-              }
-            }}
-          >
-            {depositLineChartW > 0 ? (
-              <LineChart
-                data={{
-                  labels: chartData.labels,
-                  datasets: [{ data: chartData.data.map((v) => (v > 0 ? v : 0)) }],
-                }}
-                width={depositLineChartW}
-                height={220}
-                chartConfig={{
-                  backgroundColor: surfaceSecondaryColor,
-                  backgroundGradientFrom: surfaceSecondaryColor,
-                  backgroundGradientTo: hexToRgba(primaryColor, 0.12),
-                  decimalPlaces: 0,
-                  color: (opacity = 1) => hexToRgba(primaryColor, opacity),
-                  labelColor: (opacity = 1) => hexToRgba(textSecondaryColor, opacity),
-                  propsForDots: { r: "3" },
-                }}
-                style={styles.depositLineChart}
-                bezier
-                withVerticalLabels
-                withHorizontalLabels
-              />
-            ) : null}
-          </View>
+          {/* Chart removed to prevent runtime crash on some builds (Dimensions ReferenceError). */}
           <TouchableOpacity
             style={[styles.shareRow, { marginTop: 12 }]}
             onPress={() =>
@@ -1364,17 +1321,5 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
     minWidth: 0,
-  },
-  depositChartWrap: {
-    width: "100%",
-    marginTop: 12,
-    alignSelf: "stretch",
-    overflow: "hidden",
-    borderRadius: 16,
-  },
-  depositLineChart: {
-    borderRadius: 16,
-    marginLeft: 0,
-    marginRight: 0,
   },
 });

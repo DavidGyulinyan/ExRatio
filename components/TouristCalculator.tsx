@@ -1,10 +1,14 @@
-import React, { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/themed-text";
+import CurrencyFlag from "@/components/CurrencyFlag";
+import CurrencyPicker from "@/components/CurrencyPicker";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
+import { getAsyncStorage } from "@/lib/storage";
 
 function parseNum(raw: string): number | null {
   const s = raw.replace(/\s/g, "").replace(",", ".").trim();
@@ -13,10 +17,17 @@ function parseNum(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function fmt2(n: number | null | undefined): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
+  return n.toFixed(2);
+}
+
 export default function TouristCalculator({
   onShareableMessageChange,
+  currenciesData,
 }: {
   onShareableMessageChange?: (message: string | null) => void;
+  currenciesData?: any;
 }) {
   const { t } = useLanguage();
   const surfaceColor = useThemeColor({}, "surface");
@@ -27,39 +38,106 @@ export default function TouristCalculator({
   const primaryColor = useThemeColor({}, "primary");
 
   const [amountStr, setAmountStr] = useState("1000");
-  const [rateStr, setRateStr] = useState("400");
-  const [feePctStr, setFeePctStr] = useState("0");
-  const [tipPct, setTipPct] = useState(0);
-  const [discountPct, setDiscountPct] = useState(0);
+  const [fromCurrency, setFromCurrency] = useState("USD");
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [useManualRate, setUseManualRate] = useState(false);
+  const [manualRateStr, setManualRateStr] = useState("");
+  const [tipPctStr, setTipPctStr] = useState("0");
+  const [discountPctStr, setDiscountPctStr] = useState("0");
+  const [cachedRates, setCachedRates] = useState<any>(null);
+
+  useEffect(() => {
+    let alive = true;
+    if (currenciesData?.conversion_rates) return;
+    (async () => {
+      try {
+        const storage = getAsyncStorage();
+        const raw = await storage.getItem("cachedExchangeRates");
+        if (!alive) return;
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        setCachedRates(parsed);
+      } catch {
+        // ignore – fallback will be unavailable
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [currenciesData]);
+
+  const rates = useMemo(() => {
+    return (
+      currenciesData?.conversion_rates ??
+      cachedRates?.conversion_rates ??
+      // some places may store only the rates object
+      cachedRates ??
+      null
+    );
+  }, [cachedRates, currenciesData]);
+
+  const currencies = useMemo(() => {
+    if (!rates) return ["USD", "EUR", "RUB", "GEL", "AMD"];
+    const list = fiatKeysFromConversionRates(rates);
+    return list.includes("AMD") ? list : ["AMD", ...list];
+  }, [rates]);
+
+  const autoRateToAmd = useMemo(() => {
+    if (!rates) return null;
+    const amd = Number(rates["AMD"]);
+    const from = Number(rates[fromCurrency]);
+    if (!Number.isFinite(amd) || !Number.isFinite(from) || from <= 0) return null;
+    return amd / from;
+  }, [rates, fromCurrency]);
+
+  const hasAutoRate = autoRateToAmd !== null && Number.isFinite(autoRateToAmd) && (autoRateToAmd as number) > 0;
+  const rateDisplay = useMemo(() => {
+    if (!hasAutoRate) return "—";
+    return (autoRateToAmd as number).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  }, [autoRateToAmd, hasAutoRate]);
+
+  const effectiveRate = useMemo(() => {
+    if (useManualRate) {
+      const r = parseNum(manualRateStr);
+      return r !== null && r > 0 ? r : null;
+    }
+    return hasAutoRate ? (autoRateToAmd as number) : null;
+  }, [useManualRate, manualRateStr, hasAutoRate, autoRateToAmd]);
+
+  const missingReason = useMemo(() => {
+    if (useManualRate) {
+      const r = parseNum(manualRateStr);
+      if (r === null || r <= 0) return t("touristCalc.rate.manualHint");
+      return null;
+    }
+    if (!hasAutoRate) return t("touristCalc.rate.unavailable");
+    return null;
+  }, [useManualRate, manualRateStr, hasAutoRate, t]);
 
   const result = useMemo(() => {
     const amount = parseNum(amountStr);
-    const rate = parseNum(rateStr);
-    const feePct = parseNum(feePctStr) ?? 0;
-    if (amount === null || rate === null) return null;
-    if (amount < 0 || rate <= 0 || feePct < 0) return null;
+    const rate = effectiveRate;
+    const discountPct = Math.max(0, parseNum(discountPctStr) ?? 0);
+    const tipPct = Math.max(0, parseNum(tipPctStr) ?? 0);
+    if (amount === null) return null;
+    if (amount < 0 || rate === null || rate <= 0) return null;
     const discount = (amount * discountPct) / 100;
     const subtotal = Math.max(0, amount - discount);
     const tip = (subtotal * tipPct) / 100;
     const total = subtotal + tip;
-    const fee = (total * feePct) / 100;
-    const net = Math.max(0, total - fee);
-    const received = net * rate;
+    const received = total * rate;
     return {
       amount,
       rate,
-      feePct,
-      fee,
       discountPct,
       discount,
       subtotal,
       tipPct,
       tip,
       total,
-      net,
       received,
     };
-  }, [amountStr, rateStr, feePctStr, tipPct, discountPct]);
+  }, [amountStr, discountPctStr, tipPctStr, effectiveRate]);
 
   React.useEffect(() => {
     if (!onShareableMessageChange) return;
@@ -67,12 +145,12 @@ export default function TouristCalculator({
     onShareableMessageChange(
       [
         t("touristCalc.share.title"),
-        `${t("touristCalc.field.amount")}: ${result.amount}`,
+        `${t("touristCalc.field.amount")}: ${result.amount} ${fromCurrency}`,
         `${t("touristCalc.field.rate")}: ${result.rate}`,
         `${t("touristCalc.result.received")}: ${result.received.toFixed(2)}`,
       ].join("\n")
     );
-  }, [result, onShareableMessageChange, t]);
+  }, [result, onShareableMessageChange, t, fromCurrency]);
 
   return (
     <ScrollView
@@ -100,101 +178,96 @@ export default function TouristCalculator({
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
         />
+
+        <ThemedText type="caption" style={{ color: textSecondaryColor, marginBottom: 6 }}>
+          {t("touristCalc.field.currency")}
+        </ThemedText>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setShowCurrencyPicker(true)}
+          style={[
+            styles.currencyBtn,
+            { backgroundColor: surfaceSecondaryColor, borderColor },
+          ]}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+            <CurrencyFlag currency={fromCurrency} size={20} />
+            <ThemedText type="defaultSemiBold" style={{ color: textColor }}>
+              {fromCurrency} → AMD
+            </ThemedText>
+          </View>
+          <Ionicons name="chevron-down" size={18} color={textSecondaryColor} />
+        </TouchableOpacity>
+
         <Field
           label={t("touristCalc.field.rate")}
-          value={rateStr}
-          onChangeText={setRateStr}
+          value={useManualRate ? manualRateStr : rateDisplay}
+          onChangeText={useManualRate ? setManualRateStr : () => {}}
           surfaceColor={surfaceSecondaryColor}
           borderColor={borderColor}
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
+          editable={useManualRate}
         />
+        <ThemedText type="caption" style={{ color: textSecondaryColor, marginTop: -6, marginBottom: 8 }}>
+          {useManualRate
+            ? t("touristCalc.rate.manualHint")
+            : hasAutoRate
+              ? t("touristCalc.rate.auto")
+              : t("touristCalc.rate.unavailable")}
+        </ThemedText>
+
+        <View style={styles.switchRow}>
+          <ThemedText style={{ color: textColor, flex: 1 }} numberOfLines={2}>
+            {t("touristCalc.rate.manualToggle")}
+          </ThemedText>
+          <Switch value={useManualRate} onValueChange={setUseManualRate} />
+        </View>
+
         <Field
-          label={t("touristCalc.field.feePct")}
-          value={feePctStr}
-          onChangeText={setFeePctStr}
+          label={t("touristCalc.field.discountPct")}
+          value={discountPctStr}
+          onChangeText={setDiscountPctStr}
           surfaceColor={surfaceSecondaryColor}
           borderColor={borderColor}
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
         />
 
-        <ThemedText type="caption" style={{ color: textSecondaryColor, marginBottom: 8 }}>
-          {t("touristCalc.field.discountPct")}
-        </ThemedText>
-        <View style={styles.pillsRow}>
-          {[0, 5, 10, 15, 20, 25].map((p) => {
-            const active = p === discountPct;
-            return (
-              <TouchableOpacity
-                key={p}
-                onPress={() => setDiscountPct(p)}
-                activeOpacity={0.85}
-                style={[
-                  styles.pill,
-                  {
-                    backgroundColor: active ? primaryColor : surfaceSecondaryColor,
-                    borderColor: active ? primaryColor : borderColor,
-                  },
-                ]}
-              >
-                <ThemedText
-                  type="caption"
-                  style={{ fontWeight: "800", color: active ? "#fff" : textSecondaryColor }}
-                >
-                  {p}%
-                </ThemedText>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <Field
+          label={t("touristCalc.field.tipPct")}
+          value={tipPctStr}
+          onChangeText={setTipPctStr}
+          surfaceColor={surfaceSecondaryColor}
+          borderColor={borderColor}
+          textColor={textColor}
+          textSecondaryColor={textSecondaryColor}
+        />
 
-        <ThemedText type="caption" style={{ color: textSecondaryColor, marginBottom: 8 }}>
-          {t("touristCalc.field.tipPct")}
-        </ThemedText>
-        <View style={styles.pillsRow}>
-          {[0, 5, 10, 12, 15].map((p) => {
-            const active = p === tipPct;
-            return (
-              <TouchableOpacity
-                key={p}
-                onPress={() => setTipPct(p)}
-                activeOpacity={0.85}
-                style={[
-                  styles.pill,
-                  {
-                    backgroundColor: active ? primaryColor : surfaceSecondaryColor,
-                    borderColor: active ? primaryColor : borderColor,
-                  },
-                ]}
-              >
-                <ThemedText
-                  type="caption"
-                  style={{ fontWeight: "800", color: active ? "#fff" : textSecondaryColor }}
-                >
-                  {p}%
-                </ThemedText>
-              </TouchableOpacity>
-            );
-          })}
+        <View style={{ gap: 8, marginTop: 10 }}>
+          <RowKV label={t("touristCalc.result.discount")} value={fmt2(result?.discount)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
+          <RowKV label={t("touristCalc.result.subtotal")} value={fmt2(result?.subtotal)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
+          <RowKV label={t("touristCalc.result.tip")} value={fmt2(result?.tip)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
+          <RowKV label={t("touristCalc.result.total")} value={fmt2(result?.total)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
+          <RowKV label={t("touristCalc.result.received")} value={fmt2(result?.received)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
         </View>
-
-        {result ? (
-          <View style={{ gap: 8, marginTop: 10 }}>
-            <RowKV label={t("touristCalc.result.discount")} value={result.discount.toFixed(2)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("touristCalc.result.subtotal")} value={result.subtotal.toFixed(2)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("touristCalc.result.tip")} value={result.tip.toFixed(2)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("touristCalc.result.total")} value={result.total.toFixed(2)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("touristCalc.result.fee")} value={result.fee.toFixed(2)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("touristCalc.result.net")} value={result.net.toFixed(2)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("touristCalc.result.received")} value={result.received.toFixed(2)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-          </View>
-        ) : (
-          <ThemedText type="caption" style={{ color: textSecondaryColor }}>
-            {t("touristCalc.invalid")}
+        {result ? null : (
+          <ThemedText type="caption" style={{ color: textSecondaryColor, marginTop: 10 }}>
+            {missingReason ?? t("touristCalc.invalid")}
           </ThemedText>
         )}
       </View>
+
+      <CurrencyPicker
+        visible={showCurrencyPicker}
+        currencies={currencies}
+        selectedCurrency={fromCurrency}
+        onSelect={(c) => {
+          setFromCurrency(c);
+          setShowCurrencyPicker(false);
+        }}
+        onClose={() => setShowCurrencyPicker(false)}
+      />
     </ScrollView>
   );
 }
@@ -207,8 +280,9 @@ function Field(props: {
   borderColor: string;
   textColor: string;
   textSecondaryColor: string;
+  editable?: boolean;
 }) {
-  const { label, value, onChangeText, surfaceColor, borderColor, textColor, textSecondaryColor } = props;
+  const { label, value, onChangeText, surfaceColor, borderColor, textColor, textSecondaryColor, editable } = props;
   return (
     <View style={{ marginBottom: 12 }}>
       <ThemedText type="caption" style={{ color: textSecondaryColor, marginBottom: 6 }}>
@@ -218,6 +292,7 @@ function Field(props: {
         value={value}
         onChangeText={onChangeText}
         keyboardType="decimal-pad"
+        editable={editable ?? true}
         placeholder="0"
         placeholderTextColor={textSecondaryColor}
         style={[
@@ -279,6 +354,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
+  },
+  currencyBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
   },
   row: {
     flexDirection: "row",

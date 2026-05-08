@@ -723,7 +723,10 @@ export default function HomeScreen() {
           onOpenCalculator={openCalculatorShortcut}
           onOpenConverter={openConverterShortcut}
         >
-          <TouristCalculator onShareableMessageChange={setShareTouristCalc} />
+          <TouristCalculator
+            onShareableMessageChange={setShareTouristCalc}
+            currenciesData={currenciesData}
+          />
         </QuickActionModal>
 
         <MathCalculator
