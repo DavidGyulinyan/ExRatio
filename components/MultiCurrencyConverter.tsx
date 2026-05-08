@@ -33,6 +33,7 @@ interface MultiCurrencyConverterProps {
   onShowMore?: () => void;
   maxVisibleItems?: number;
   showAllTargets?: boolean;
+  onShareableMessageChange?: (message: string | null) => void;
 }
 
 interface ConversionTarget {
@@ -51,6 +52,7 @@ export default function MultiCurrencyConverter({
   onShowMore,
   maxVisibleItems = 5,
   showAllTargets = false,
+  onShareableMessageChange,
 }: MultiCurrencyConverterProps) {
   const [amount, setAmount] = useState<string>("1");
   const [fromCurrency, setFromCurrency] = useState<string>(
@@ -225,6 +227,44 @@ export default function MultiCurrencyConverter({
   useEffect(() => {
     calculateConversions();
   }, [calculateConversions]);
+
+  useEffect(() => {
+    if (!inModal || !onShareableMessageChange) return;
+    if (
+      !fromCurrency ||
+      conversionTargets.length === 0 ||
+      Object.keys(conversions).length === 0
+    ) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const amt = parseFloat(amount);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const lines = [
+      t("converter.multiCurrency.section"),
+      `${amt.toLocaleString()} ${fromCurrency}`,
+      ...conversionTargets.map((target) => {
+        const v = conversions[target.currency];
+        const formatted =
+          v !== undefined
+            ? v.toLocaleString(undefined, { maximumFractionDigits: 4 })
+            : "—";
+        return `→ ${target.currency}: ${formatted}`;
+      }),
+    ];
+    onShareableMessageChange(lines.join("\n"));
+  }, [
+    inModal,
+    onShareableMessageChange,
+    amount,
+    fromCurrency,
+    conversionTargets,
+    conversions,
+    t,
+  ]);
 
   // Save to history whenever conversions are calculated
   useEffect(() => {

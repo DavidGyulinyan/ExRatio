@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   Modal,
   StyleSheet,
@@ -16,8 +15,10 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 import { useCalculatorHistory } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { shareLines } from "@/lib/shareText";
+import * as Haptics from "expo-haptics";
 
-type CalculatorMode = "basic" | "advanced" | "loan";
+type CalculatorMode = "basic" | "advanced";
 
 interface MathCalculatorProps {
   visible: boolean;
@@ -26,27 +27,6 @@ interface MathCalculatorProps {
   onAddToConverter?: (result: number) => void;
   autoCloseAfterCalculation?: boolean;
   inModal?: boolean; // Hide header when used inside DashboardModal
-}
-
-interface LoanToolsPanelProps {
-  surfaceSecondaryColor: string;
-  borderColor: string;
-  primaryColor: string;
-  textColor: string;
-  textSecondaryColor: string;
-  errorColor: string;
-  surfaceColor: string;
-  loanPrincipal: string;
-  loanRateAnnual: string;
-  loanTermMonths: string;
-  loanError: string | null;
-  loanMonthly: number | null;
-  loanTotalInterest: number | null;
-  loanTotalPaid: number | null;
-  onPrincipalChange: (value: string) => void;
-  onRateChange: (value: string) => void;
-  onTermChange: (value: string) => void;
-  onCalculate: () => void;
 }
 
 const LOAN_HISTORY_ARROW = "\u2192";
@@ -78,132 +58,6 @@ function formatCalculatorHistoryDisplay(record: {
     return `${trimExpr} = ${String(r)}`;
   }
   return trimExpr;
-}
-
-/** Defined outside MathCalculator so React keeps a stable component type (TextInput keeps focus). */
-function LoanToolsPanel({
-  surfaceSecondaryColor,
-  borderColor,
-  primaryColor,
-  textColor,
-  textSecondaryColor,
-  errorColor,
-  surfaceColor,
-  loanPrincipal,
-  loanRateAnnual,
-  loanTermMonths,
-  loanError,
-  loanMonthly,
-  loanTotalInterest,
-  loanTotalPaid,
-  onPrincipalChange,
-  onRateChange,
-  onTermChange,
-  onCalculate,
-}: LoanToolsPanelProps) {
-  const { t } = useLanguage();
-  const loanButtonLabelColor = useThemeColor({}, "textInverse");
-
-  return (
-    <View
-      style={[
-        styles.advancedPanel,
-        {
-          backgroundColor: surfaceColor,
-          borderColor,
-        },
-      ]}
-    >
-      <View style={styles.advancedPanelTitleRow}>
-        <View style={styles.advancedPanelTitleLeft}>
-          <Ionicons name="cash-outline" size={18} color={textSecondaryColor} />
-          <Text style={[styles.advancedPanelTitle, { color: textColor }]}>
-            {t("calculator.loanTitle")}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-        {t("calculator.loanPrincipal")}
-      </Text>
-      <TextInput
-        style={[
-          styles.loanInput,
-          { color: textColor, borderColor, backgroundColor: surfaceSecondaryColor },
-        ]}
-        value={loanPrincipal}
-        onChangeText={onPrincipalChange}
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={textSecondaryColor}
-        accessibilityLabel={t("calculator.loanPrincipal")}
-      />
-
-      <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-        {t("calculator.loanAnnualRate")}
-      </Text>
-      <TextInput
-        style={[
-          styles.loanInput,
-          { color: textColor, borderColor, backgroundColor: surfaceSecondaryColor },
-        ]}
-        value={loanRateAnnual}
-        onChangeText={onRateChange}
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={textSecondaryColor}
-        accessibilityLabel={t("calculator.loanAnnualRate")}
-      />
-
-      <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-        {t("calculator.loanTermMonths")}
-      </Text>
-      <TextInput
-        style={[
-          styles.loanInput,
-          { color: textColor, borderColor, backgroundColor: surfaceSecondaryColor },
-        ]}
-        value={loanTermMonths}
-        onChangeText={onTermChange}
-        keyboardType="number-pad"
-        placeholder="0"
-        placeholderTextColor={textSecondaryColor}
-        accessibilityLabel={t("calculator.loanTermMonths")}
-      />
-
-      {loanError ? (
-        <Text style={[styles.loanErrorText, { color: errorColor }]}>{loanError}</Text>
-      ) : null}
-
-      <TouchableOpacity
-        style={[styles.loanCalcButton, { backgroundColor: primaryColor }]}
-        onPress={() => onCalculate()}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel={t("calculator.loanCalculate")}
-      >
-        <Text style={[styles.loanCalcButtonText, { color: loanButtonLabelColor }]}>
-          {t("calculator.loanCalculate")}
-        </Text>
-      </TouchableOpacity>
-
-      {loanMonthly !== null &&
-      loanTotalInterest !== null &&
-      loanTotalPaid !== null ? (
-        <View style={styles.loanResults}>
-          <Text style={[styles.loanResultLine, { color: textColor }]}>
-            {t("calculator.loanTotalInterest")}: {loanTotalInterest}
-          </Text>
-          <Text style={[styles.loanResultLine, { color: textColor }]}>
-            {t("calculator.loanTotalPaid")}: {loanTotalPaid}
-          </Text>
-          <Text style={[styles.loanFootnote, { color: textSecondaryColor }]}>
-            {t("calculator.loanFootnote")}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
 }
 
 export default function MathCalculator({
@@ -240,16 +94,9 @@ export default function MathCalculator({
   const [showHistory, setShowHistory] = useState(false);
   const [showRoundingOptions, setShowRoundingOptions] = useState(false);
   const [mode, setMode] = useState<CalculatorMode>("basic");
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
 
-  const [loanPrincipal, setLoanPrincipal] = useState("");
-  const [loanRateAnnual, setLoanRateAnnual] = useState("");
-  const [loanTermMonths, setLoanTermMonths] = useState("");
-  const [loanError, setLoanError] = useState<string | null>(null);
-  const [loanMonthly, setLoanMonthly] = useState<number | null>(null);
-  const [loanTotalInterest, setLoanTotalInterest] = useState<number | null>(null);
-  const [loanTotalPaid, setLoanTotalPaid] = useState<number | null>(null);
-
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   const isSmallScreen = height < 700;
   const isMediumScreen = height >= 700 && height < 800;
 
@@ -275,22 +122,31 @@ export default function MathCalculator({
     }
   }, [visible, user, supabaseHistory]);
 
-  useEffect(() => {
-    if (mode !== "loan") {
-      setLoanMonthly(null);
-      setLoanTotalInterest(null);
-      setLoanTotalPaid(null);
-      setLoanError(null);
-    }
-  }, [mode]);
-
   const getResponsiveValue = (small: number, medium: number, large: number) => {
     if (isSmallScreen) return small;
     if (isMediumScreen) return medium;
     return large;
   };
+  const sidePad = getResponsiveValue(12, 16, 20);
+
+  const safeHaptic = (kind: "light" | "success" | "error" = "light") => {
+    try {
+      if (kind === "success") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        return;
+      }
+      if (kind === "error") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        return;
+      }
+      void Haptics.selectionAsync();
+    } catch {
+      // ignore
+    }
+  };
 
   const inputNumber = (num: string) => {
+    safeHaptic("light");
     if (calculationComplete) {
       setDisplay(num);
       setEquation(num);
@@ -315,6 +171,7 @@ export default function MathCalculator({
   };
 
   const inputOperation = (nextOperation: string) => {
+    safeHaptic("light");
     const inputValue = parseFloat(display);
     const operationSymbol = nextOperation === "/" ? "÷" : nextOperation === "*" ? "×" : nextOperation;
 
@@ -367,6 +224,7 @@ export default function MathCalculator({
   };
 
   const performCalculation = async () => {
+    safeHaptic("success");
     const inputValue = parseFloat(display);
 
     if (previousValue !== null && operation) {
@@ -422,122 +280,11 @@ export default function MathCalculator({
     }
   };
 
-  // Tax and tip calculations
-  const applyTip = (percentage: number) => {
-    const currentValue = parseFloat(display);
-    const tipAmount = (currentValue * percentage) / 100;
-    const totalWithTip = currentValue + tipAmount;
-    setDisplay(totalWithTip.toString());
-    setEquation(`${currentValue} + ${percentage}% tip`);
-    setCalculationComplete(false);
-    addToHistory(`${currentValue} + ${percentage}% tip = ${totalWithTip.toFixed(roundingDecimalPlaces)}`);
-  };
-
-  const applyDiscount = (percentage: number) => {
-    const currentValue = parseFloat(display);
-    const discountAmount = (currentValue * percentage) / 100;
-    const finalPrice = currentValue - discountAmount;
-    setDisplay(finalPrice.toString());
-    setEquation(`${currentValue} - ${percentage}%`);
-    setCalculationComplete(false);
-    addToHistory(`${currentValue} - ${percentage}% = ${finalPrice.toFixed(roundingDecimalPlaces)}`);
-  };
-
-  const applyTax = (percentage: number) => {
-    const currentValue = parseFloat(display);
-    const taxAmount = (currentValue * percentage) / 100;
-    const totalWithTax = currentValue + taxAmount;
-    setDisplay(totalWithTax.toString());
-    setEquation(`${currentValue} + ${percentage}% tax`);
-    setCalculationComplete(false);
-    addToHistory(`${currentValue} + ${percentage}% tax = ${totalWithTax.toFixed(roundingDecimalPlaces)}`);
-  };
-
+  // Tip & discount helpers
   const roundForDisplay = (n: number) => parseFloat(n.toFixed(roundingDecimalPlaces));
 
-  const parseLoanNumber = (raw: string) => {
-    const s = raw.replace(/\s/g, "").replace(/,/g, "");
-    const n = parseFloat(s);
-    return Number.isFinite(n) ? n : NaN;
-  };
-
-  const parseLoanMonths = (raw: string) => {
-    const s = raw.replace(/\s/g, "").replace(/,/g, "");
-    const n = parseInt(s, 10);
-    return Number.isFinite(n) ? n : NaN;
-  };
-
-  const computeLoan = async () => {
-    setLoanError(null);
-    const principal = parseLoanNumber(loanPrincipal);
-    const annualPct = parseLoanNumber(loanRateAnnual);
-    const months = parseLoanMonths(loanTermMonths);
-
-    if (!Number.isFinite(principal) || principal <= 0) {
-      setLoanError(t("calculator.loanErrPrincipal"));
-      return;
-    }
-    if (!Number.isFinite(annualPct) || annualPct < 0) {
-      setLoanError(t("calculator.loanErrRate"));
-      return;
-    }
-    if (!Number.isFinite(months) || months <= 0) {
-      setLoanError(t("calculator.loanErrTerm"));
-      return;
-    }
-
-    const monthlyRate = annualPct / 100 / 12;
-    let payment: number;
-    if (monthlyRate === 0) {
-      payment = principal / months;
-    } else {
-      const factor = Math.pow(1 + monthlyRate, months);
-      payment = (principal * monthlyRate * factor) / (factor - 1);
-    }
-
-    const totalPaidRaw = payment * months;
-    const totalInterestRaw = totalPaidRaw - principal;
-
-    if (!Number.isFinite(payment) || payment <= 0 || !Number.isFinite(totalPaidRaw)) {
-      setLoanError(t("calculator.loanErrRate"));
-      return;
-    }
-
-    const paymentR = roundForDisplay(payment);
-    const interestR = roundForDisplay(totalInterestRaw);
-    const paidR = roundForDisplay(totalPaidRaw);
-
-    setLoanMonthly(paymentR);
-    setLoanTotalInterest(interestR);
-    setLoanTotalPaid(paidR);
-
-    const historyLine = tWithParams("calculator.loanHistoryLine", {
-      principal: String(roundForDisplay(principal)),
-      rate: String(roundForDisplay(annualPct)),
-      months: String(months),
-      payment: String(paymentR),
-    });
-    addToHistory(historyLine);
-
-    if (user) {
-      try {
-        await saveCalculation(historyLine, paymentR, "loan", {
-          roundingDecimalPlaces,
-          principal,
-          annualPct,
-          months,
-        });
-      } catch (e) {
-        console.error("Error saving loan calculation:", e);
-      }
-    }
-
-    if (onResult) {
-      onResult(paymentR);
-    }
-  };
-
   const applySqrt = () => {
+    safeHaptic("light");
     const currentValue = parseFloat(display);
     if (isNaN(currentValue) || currentValue < 0) return;
     const out = roundForDisplay(Math.sqrt(currentValue));
@@ -552,6 +299,7 @@ export default function MathCalculator({
   };
 
   const applyReciprocal = () => {
+    safeHaptic("light");
     const currentValue = parseFloat(display);
     if (isNaN(currentValue) || currentValue === 0) return;
     const out = roundForDisplay(1 / currentValue);
@@ -566,6 +314,7 @@ export default function MathCalculator({
   };
 
   const splitBy = (parts: number) => {
+    safeHaptic("light");
     const currentValue = parseFloat(display);
     if (isNaN(currentValue) || parts <= 0) return;
     const out = roundForDisplay(currentValue / parts);
@@ -585,6 +334,7 @@ export default function MathCalculator({
   };
 
   const clear = () => {
+    safeHaptic("light");
     setDisplay("0");
     setEquation("");
     setPreviousValue(null);
@@ -594,6 +344,7 @@ export default function MathCalculator({
   };
 
   const clearAll = () => {
+    safeHaptic("light");
     setDisplay("0");
     setEquation("");
     setPreviousValue(null);
@@ -604,6 +355,7 @@ export default function MathCalculator({
   };
 
   const inputDecimal = () => {
+    safeHaptic("light");
     if (calculationComplete) {
       setDisplay("0.");
       setEquation("0.");
@@ -619,6 +371,7 @@ export default function MathCalculator({
   };
 
   const inputPercentage = () => {
+    safeHaptic("light");
     if (calculationComplete) {
       const percentageValue = parseFloat(display) / 100;
       setDisplay(percentageValue.toString());
@@ -637,6 +390,7 @@ export default function MathCalculator({
   };
 
   const toggleSign = () => {
+    safeHaptic("light");
     const currentValue = parseFloat(display);
     const toggledValue = -currentValue;
     setDisplay(toggledValue.toString());
@@ -648,6 +402,7 @@ export default function MathCalculator({
   };
 
   const deleteLastDigit = () => {
+    safeHaptic("light");
     if (calculationComplete) {
       return; // Don't allow deletion after calculation is complete
     }
@@ -663,12 +418,27 @@ export default function MathCalculator({
     }
   };
 
+  const clearEntry = () => {
+    safeHaptic("light");
+    setDisplay("0");
+    if (!operation) {
+      setEquation("");
+      setPreviousValue(null);
+      setOperation(null);
+      setWaitingForOperand(false);
+    } else {
+      setWaitingForOperand(true);
+    }
+    setCalculationComplete(false);
+  };
+
   const renderButton = (
     text: string,
     onPress: () => void,
     buttonType: string = "default",
     flex?: number,
-    compact: boolean = false
+    compact: boolean = false,
+    onLongPress?: () => void
   ) => {
     const flexStyle = flex ? { flex } : {};
     let style: Record<string, unknown> = {
@@ -856,6 +626,8 @@ export default function MathCalculator({
       <TouchableOpacity 
         style={style}
         onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={onLongPress ? 320 : undefined}
         activeOpacity={0.8}
         disabled={
           calculationComplete &&
@@ -875,20 +647,8 @@ export default function MathCalculator({
     );
   };
 
-  const getDisplayText = () => {
-    if (mode === "loan") {
-      if (loanMonthly !== null) {
-        return String(loanMonthly);
-      }
-      return t("calculator.loanDisplayHint");
-    }
-
-    // Always show current display value (which includes intermediate results)
-    if (calculationComplete) {
-      return equation;
-    }
-    
-    // Show the current calculation with result preview
+  const getEquationPreviewText = () => {
+    if (calculationComplete) return equation;
     if (equation && operation && !waitingForOperand && previousValue !== null) {
       const currentValue = parseFloat(display);
       if (!isNaN(currentValue)) {
@@ -897,30 +657,26 @@ export default function MathCalculator({
         return `${equation} = ${result}`;
       }
     }
-    
-    // Show equation in real-time when building calculation
-    if (equation && (operation || waitingForOperand)) {
-      return equation;
-    }
-    
-    return display;
+    if (equation && (operation || waitingForOperand)) return equation;
+    return "";
   };
 
+  const getMainValueText = () => display;
+
   const getDisplayFontSize = () => {
-    if (mode === "loan") {
-      if (loanMonthly !== null) {
-        return getResponsiveValue(22, 26, 30);
-      }
-      return getResponsiveValue(12, 13, 14);
-    }
-    const textLength = getDisplayText().length;
+    const textLength = getMainValueText().length;
     if (textLength > 15) return getResponsiveValue(13, 15, 17);
     if (textLength > 10) return getResponsiveValue(16, 18, 21);
     return getResponsiveValue(24, 28, 32);
   };
 
   const RoundingOptions = () => (
-    <View style={[styles.optionsContainer, { backgroundColor: surfaceSecondaryColor, borderColor }]}>
+    <View
+      style={[
+        styles.optionsContainer,
+        { backgroundColor: surfaceSecondaryColor, borderColor, marginHorizontal: sidePad },
+      ]}
+    >
       <Text style={[styles.optionsTitle, { color: textColor }]}>{t('calculator.roundingOptions')}</Text>
       <View style={styles.optionsRow}>
         {[0, 1, 2, 3, 4].map(decimals => (
@@ -989,41 +745,6 @@ export default function MathCalculator({
         </View>
       </View>
 
-      <View style={styles.advancedSectionBlock}>
-        <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-          {t("calculator.sectionTips")}
-        </Text>
-        <View style={[styles.buttonRow, advancedRowGap]}>
-          {renderButton(t("calculator.buttonTip10"), () => applyTip(10), "advancedTool", undefined, true)}
-          {renderButton(t("calculator.buttonTip15"), () => applyTip(15), "advancedTool", undefined, true)}
-          {renderButton(t("calculator.buttonTip18"), () => applyTip(18), "advancedTool", undefined, true)}
-          {renderButton(t("calculator.buttonTip20"), () => applyTip(20), "advancedTool", undefined, true)}
-        </View>
-      </View>
-
-      <View style={styles.advancedSectionBlock}>
-        <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-          {t("calculator.sectionTax")}
-        </Text>
-        <View style={[styles.buttonRow, advancedRowGap]}>
-          {renderButton(t("calculator.buttonTax8"), () => applyTax(8), "advancedTool", undefined, true)}
-          {renderButton(t("calculator.buttonTax10"), () => applyTax(10), "advancedTool", undefined, true)}
-          {renderButton(t("calculator.buttonTax20"), () => applyTax(20), "advancedTool", undefined, true)}
-        </View>
-      </View>
-
-      <View style={styles.advancedSectionBlock}>
-        <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
-          {t("calculator.sectionDiscount")}
-        </Text>
-        <View style={[styles.buttonRow, advancedRowGap]}>
-          {renderButton(t("calculator.buttonDiscount10"), () => applyDiscount(10), "advancedTool", undefined, true)}
-          {renderButton(t("calculator.buttonDiscount15"), () => applyDiscount(15), "advancedTool", undefined, true)}
-          {renderButton(t("calculator.buttonDiscount20"), () => applyDiscount(20), "advancedTool", undefined, true)}
-          {renderButton(t("calculator.buttonDiscount25"), () => applyDiscount(25), "advancedTool", undefined, true)}
-        </View>
-      </View>
-
       <View style={[styles.advancedSectionBlock, styles.advancedSectionBlockLast]}>
         <Text style={[styles.advancedSectionLabel, { color: textSecondaryColor }]}>
           {t("calculator.sectionQuickMath")}
@@ -1052,7 +773,12 @@ export default function MathCalculator({
         : calculationHistory;
 
     return (
-      <View style={[styles.historyContainer, { backgroundColor: surfaceSecondaryColor, borderColor }]}>
+      <View
+        style={[
+          styles.historyContainer,
+          { backgroundColor: surfaceSecondaryColor, borderColor, marginHorizontal: sidePad },
+        ]}
+      >
         <View style={styles.historyHeader}>
           <Text
             style={[styles.historyTitle, { color: textColor }]}
@@ -1112,24 +838,27 @@ export default function MathCalculator({
             styles.header,
             {
               paddingTop: getResponsiveValue(20, 30, 40),
+              paddingHorizontal: sidePad,
               marginBottom: getResponsiveValue(16, 24, 32),
             }
           ]}>
-            <TouchableOpacity
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              style={[
-                styles.closeButton,
-                {
-                  backgroundColor: surfaceSecondaryColor,
-                  borderColor,
-                  borderWidth: 1,
-                },
-              ]}
-            >
-              <Ionicons name="arrow-back" size={22} color={textSecondaryColor} />
-            </TouchableOpacity>
+            <View style={styles.headerSide}>
+              <TouchableOpacity
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                style={[
+                  styles.closeButton,
+                  {
+                    backgroundColor: surfaceSecondaryColor,
+                    borderColor,
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Ionicons name="arrow-back" size={22} color={textSecondaryColor} />
+              </TouchableOpacity>
+            </View>
             <Text style={[
               styles.title,
               {
@@ -1137,13 +866,115 @@ export default function MathCalculator({
                 color: textColor,
               }
             ]}>{t('calculator.title')}</Text>
-            <View style={{ width: 60 }} />
+            <View style={styles.headerSideRight}>
+              <TouchableOpacity
+                onPress={() => setShowQuickMenu(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Menu"
+                style={[
+                  styles.closeButton,
+                  {
+                    backgroundColor: surfaceSecondaryColor,
+                    borderColor,
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Ionicons name="menu-outline" size={22} color={textSecondaryColor} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  void shareLines([
+                    t("calculator.title"),
+                    getEquationPreviewText() || getMainValueText(),
+                  ])
+                }
+                accessibilityRole="button"
+                accessibilityLabel={t("common.share")}
+                style={[
+                  styles.closeButton,
+                  {
+                    backgroundColor: surfaceSecondaryColor,
+                    borderColor,
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Ionicons name="share-outline" size={22} color={primaryColor} />
+              </TouchableOpacity>
+            </View>
           </View>
         )}
+
+        <Modal
+          visible={showQuickMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowQuickMenu(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setShowQuickMenu(false)}
+            style={styles.menuBackdrop}
+          >
+            <View
+              style={[
+                styles.menuSheet,
+                { backgroundColor: surfaceSecondaryColor, borderColor },
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setMode((m) => (m === "advanced" ? "basic" : "advanced"));
+                  setShowHistory(false);
+                  setShowRoundingOptions(false);
+                  setShowQuickMenu(false);
+                }}
+              >
+                <Ionicons
+                  name={mode === "advanced" ? "calculator-outline" : "sparkles-outline"}
+                  size={18}
+                  color={textSecondaryColor}
+                />
+                <Text style={[styles.menuItemText, { color: textColor }]}>
+                  {mode === "advanced" ? t("calculator.basic") : t("calculator.advanced")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setShowHistory((v) => !v);
+                  setShowRoundingOptions(false);
+                  setShowQuickMenu(false);
+                }}
+              >
+                <Ionicons name="time-outline" size={18} color={textSecondaryColor} />
+                <Text style={[styles.menuItemText, { color: textColor }]}>
+                  {t("calculator.history")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setShowRoundingOptions((v) => !v);
+                  setShowHistory(false);
+                  setShowQuickMenu(false);
+                }}
+              >
+                <Ionicons name="options-outline" size={18} color={textSecondaryColor} />
+                <Text style={[styles.menuItemText, { color: textColor }]}>
+                  {tWithParams("calculator.rounding", { decimals: roundingDecimalPlaces })}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <View style={[
           styles.displayContainer,
           {
+            paddingHorizontal: sidePad,
             marginBottom: getResponsiveValue(10, 12, 14),
           }
         ]}>
@@ -1158,6 +989,18 @@ export default function MathCalculator({
               borderColor,
             }
           ]}>
+            {getEquationPreviewText() ? (
+              <Text
+                style={[
+                  styles.equationText,
+                  { color: textSecondaryColor },
+                ]}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {getEquationPreviewText()}
+              </Text>
+            ) : null}
             <Text
               style={[
                 styles.displayText,
@@ -1165,110 +1008,27 @@ export default function MathCalculator({
                   fontSize: getDisplayFontSize(),
                   lineHeight: getDisplayFontSize() * 1.15,
                   color: textColor,
-                  textAlign: mode === "loan" && loanMonthly === null ? "center" : "right",
+                  textAlign: "right",
                 },
               ]}
-              numberOfLines={mode === "loan" && loanMonthly === null ? 3 : 4}
-              adjustsFontSizeToFit={mode === "loan" && loanMonthly === null}
+              numberOfLines={4}
               minimumFontScale={0.75}
             >
-              {getDisplayText()}
+              {getMainValueText()}
             </Text>
           </View>
         </View>
 
-        {/* Quick access toolbar — equal icon-only buttons */}
-        <View style={styles.toolbar}>
-          <View style={styles.toolbarRowCompact}>
-            <TouchableOpacity
-              style={[
-                styles.toolbarIconButton,
-                {
-                  backgroundColor: mode === "advanced" ? surfaceColor : surfaceSecondaryColor,
-                  borderColor,
-                },
-              ]}
-              onPress={() =>
-                setMode((m) => (m === "advanced" ? "basic" : "advanced"))
-              }
-              accessibilityRole="button"
-              accessibilityLabel={
-                mode === "advanced" ? t("calculator.basic") : t("calculator.advanced")
-              }
-            >
-              <Ionicons
-                name={mode === "advanced" ? "calculator-outline" : "sparkles-outline"}
-                size={24}
-                color={mode === "advanced" ? textColor : textSecondaryColor}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.toolbarIconButton,
-                {
-                  backgroundColor: mode === "loan" ? surfaceColor : surfaceSecondaryColor,
-                  borderColor,
-                },
-              ]}
-              onPress={() => setMode((m) => (m === "loan" ? "basic" : "loan"))}
-              accessibilityRole="button"
-              accessibilityLabel={t("calculator.loan")}
-            >
-              <Ionicons
-                name="wallet-outline"
-                size={24}
-                color={mode === "loan" ? textColor : textSecondaryColor}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.toolbarIconButton,
-                {
-                  backgroundColor: showHistory ? surfaceColor : surfaceSecondaryColor,
-                  borderColor: showHistory ? primaryColor : borderColor,
-                },
-              ]}
-              onPress={() => setShowHistory(!showHistory)}
-              accessibilityRole="button"
-              accessibilityLabel={t("calculator.history")}
-            >
-              <Ionicons
-                name="time-outline"
-                size={24}
-                color={showHistory ? primaryColor : textSecondaryColor}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.toolbarIconButton,
-                {
-                  backgroundColor: showRoundingOptions ? surfaceColor : surfaceSecondaryColor,
-                  borderColor: showRoundingOptions ? primaryColor : borderColor,
-                },
-              ]}
-              onPress={() => setShowRoundingOptions(!showRoundingOptions)}
-              accessibilityRole="button"
-              accessibilityLabel={tWithParams("calculator.rounding", {
-                decimals: roundingDecimalPlaces,
-              })}
-            >
-              <Ionicons
-                name="options-outline"
-                size={24}
-                color={showRoundingOptions ? primaryColor : textSecondaryColor}
-              />
-            </TouchableOpacity>
-            {onAddToConverter && (
+        {onAddToConverter ? (
+          <View style={[styles.toolbar, { paddingHorizontal: sidePad }]}>
+            <View style={styles.toolbarRowCompact}>
               <TouchableOpacity
                 style={[
                   styles.toolbarIconButton,
                   { backgroundColor: successColor, borderColor: successColor },
                 ]}
                 onPress={() => {
-                  const result =
-                    mode === "loan" && loanMonthly !== null
-                      ? loanMonthly
-                      : parseFloat(display);
+                  const result = parseFloat(display);
                   if (!isNaN(result) && result !== 0) {
                     onAddToConverter(result);
                     onClose();
@@ -1280,11 +1040,11 @@ export default function MathCalculator({
               >
                 <Ionicons name="swap-horizontal-outline" size={24} color={textInverseColor} />
               </TouchableOpacity>
-            )}
+            </View>
           </View>
-        </View>
+        ) : null}
 
-        {/* Conditional views */}
+        {/* Conditional views (controlled from menu) */}
         {showRoundingOptions && <RoundingOptions />}
         {showHistory && <HistoryView />}
 
@@ -1292,7 +1052,7 @@ export default function MathCalculator({
           style={[
             styles.buttonGrid,
             {
-              paddingHorizontal: getResponsiveValue(12, 16, 20),
+              paddingHorizontal: sidePad,
               flex: showHistory || showRoundingOptions ? 0 : 1,
             }
           ]}
@@ -1303,37 +1063,6 @@ export default function MathCalculator({
           showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {mode === "loan" && (
-            <LoanToolsPanel
-              surfaceSecondaryColor={surfaceSecondaryColor}
-              borderColor={borderColor}
-              primaryColor={primaryColor}
-              textColor={textColor}
-              textSecondaryColor={textSecondaryColor}
-              errorColor={errorColor}
-              surfaceColor={surfaceColor}
-              loanPrincipal={loanPrincipal}
-              loanRateAnnual={loanRateAnnual}
-              loanTermMonths={loanTermMonths}
-              loanError={loanError}
-              loanMonthly={loanMonthly}
-              loanTotalInterest={loanTotalInterest}
-              loanTotalPaid={loanTotalPaid}
-              onPrincipalChange={(v) => {
-                setLoanPrincipal(v);
-                setLoanError(null);
-              }}
-              onRateChange={(v) => {
-                setLoanRateAnnual(v);
-                setLoanError(null);
-              }}
-              onTermChange={(v) => {
-                setLoanTermMonths(v);
-                setLoanError(null);
-              }}
-              onCalculate={() => void computeLoan()}
-            />
-          )}
           {mode === "basic" && (
             <>
               <View style={[
@@ -1344,7 +1073,7 @@ export default function MathCalculator({
                 }
               ]}>
                 {renderButton(t('calculator.buttonC'), clear, "clear")}
-                {renderButton(t('calculator.buttonBackspace'), deleteLastDigit, "delete")}
+                {renderButton(t('calculator.buttonBackspace'), deleteLastDigit, "delete", undefined, false, clearEntry)}
                 {renderButton(t('calculator.buttonPercent'), inputPercentage)}
                 {renderButton(t('calculator.buttonDivide'), () => inputOperation("/"), "operation")}
               </View>
@@ -1411,7 +1140,7 @@ export default function MathCalculator({
                 }
               ]}>
                 {renderButton(t('calculator.buttonC'), clear, "clear")}
-                {renderButton(t('calculator.buttonBackspace'), deleteLastDigit, "delete")}
+                {renderButton(t('calculator.buttonBackspace'), deleteLastDigit, "delete", undefined, false, clearEntry)}
                 {renderButton(t('calculator.buttonPercent'), inputPercentage)}
                 {renderButton(t('calculator.buttonDivide'), () => inputOperation("/"), "operation")}
               </View>
@@ -1480,14 +1209,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0a0a0a",
-    paddingHorizontal: 24,
+    paddingHorizontal: 0,
     paddingTop: 8,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 0,
+  },
+  headerSide: {
+    width: 36,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  headerSideRight: {
+    width: 86,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 10,
   },
   closeButton: {
     width: 36,
@@ -1503,7 +1244,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   displayContainer: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 0,
   },
   display: {
     backgroundColor: "rgba(255, 255, 255, 0.08)",
@@ -1521,8 +1262,46 @@ const styles = StyleSheet.create({
     letterSpacing: 0.35,
     includeFontPadding: false,
   },
+  equationText: {
+    width: "100%",
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    marginBottom: 6,
+    includeFontPadding: false,
+  },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-start",
+    alignItems: "flex-end",
+    paddingTop: 72,
+    paddingRight: 14,
+  },
+  menuSheet: {
+    width: 260,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: "600",
+    includeFontPadding: false,
+  },
   toolbar: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
     paddingVertical: 2,
     marginBottom: 8,
   },
@@ -1548,7 +1327,6 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.05)",
-    marginHorizontal: 20,
     marginBottom: 16,
     padding: 16,
     borderRadius: 12,
@@ -1589,7 +1367,6 @@ const styles = StyleSheet.create({
   },
   historyContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.05)",
-    marginHorizontal: 20,
     marginBottom: 16,
     padding: 16,
     borderRadius: 12,
@@ -1803,42 +1580,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.15,
     marginBottom: 8,
     marginTop: 0,
-  },
-  loanInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    marginBottom: 6,
-  },
-  loanErrorText: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  loanCalcButton: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 6,
-    marginBottom: 4,
-  },
-  loanCalcButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  loanResults: {
-    marginTop: 10,
-    gap: 6,
-  },
-  loanResultLine: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  loanFootnote: {
-    fontSize: 11,
-    fontStyle: "italic",
-    marginTop: 4,
   },
 });

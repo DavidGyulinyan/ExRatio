@@ -1,8 +1,8 @@
-import React from 'react';
-import { Image, View, StyleSheet, Text } from 'react-native';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
-import { useLanguage } from '@/contexts/LanguageContext';
+import React from "react";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
+
+import { FinHubWordmark, FIN_HUB_WORDMARK_ASPECT } from "@/components/FinHubWordmark";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 interface LogoProps {
   size?: number;
@@ -11,58 +11,27 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 36, showText = true, textSize = 26 }: LogoProps) {
-  const colorScheme = useColorScheme();
-  const { t } = useLanguage();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { width: windowWidth } = useWindowDimensions();
+  const finColor = useThemeColor({}, "text");
+
+  const rawHeight = showText ? Math.max(size, textSize * 1.12) : size;
+  const height = Math.max(1, Math.round(Number.isFinite(rawHeight) ? rawHeight : size));
+
+  const safeWindow = windowWidth > 0 ? windowWidth : 400;
+  const maxByScreen = Math.floor(safeWindow * 0.52);
+  const naturalWidth = Math.round(height * FIN_HUB_WORDMARK_ASPECT);
+  const width = Math.max(1, Math.min(naturalWidth, maxByScreen));
+  const scaledHeight = Math.max(1, Math.round(width / FIN_HUB_WORDMARK_ASPECT));
 
   return (
     <View style={styles.logoContainer}>
-      <Image
-        source={require('../assets/images/splash-icon.png')}
-        style={[
-          styles.logoImage,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          },
-        ]}
-        resizeMode="contain"
-      />
-      {showText && (
-        <Text
-          style={[
-            styles.logoText,
-            {
-              color: colors.text, // Use theme-aware text color
-              fontSize: textSize,
-            },
-          ]}
-        >
-          ExRatio
-        </Text>
-      )}
+      <FinHubWordmark width={width} height={scaledHeight} finColor={finColor} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 2,
-    maxWidth: '60%', // Prevent logo from taking too much space
-  },
-  logoImage: {
-    flexShrink: 0,
-    backgroundColor: "transparent",
-  },
-  logoText: {
-    fontWeight: 'bold',
-    fontSize: 16, // Slightly smaller base size
-    marginLeft: 2,
-    flexWrap: 'wrap',
-    flexShrink: 1, // Allow text to shrink if needed
+    overflow: "hidden",
   },
 });

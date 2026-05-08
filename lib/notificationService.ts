@@ -3,6 +3,14 @@ import { Alert, Platform } from 'react-native';
 
 import { getAsyncStorage } from './storage';
 
+// Keep notifications quiet in production.
+const NOTIFICATIONS_DEBUG_LOGS = false;
+function debugLog(...args: any[]) {
+  if (!NOTIFICATIONS_DEBUG_LOGS) return;
+  // eslint-disable-next-line no-console
+  console.log(...args);
+}
+
 /** Importing `expo-notifications` on Expo Go + Android registers push listeners that `console.error` (SDK 53+). */
 function isExpoGoAndroidSkipNativeNotifications(): boolean {
   return Platform.OS === 'android' && isRunningInExpoGo();
@@ -48,7 +56,7 @@ const loadNotificationModules = async () => {
         Device = await import('expo-device');
       }
     } catch (error) {
-      console.log('⚠️ Failed to load expo-device:', error);
+      debugLog('⚠️ Failed to load expo-device:', error);
     }
     return { Notifications: null, Device };
   }
@@ -86,7 +94,7 @@ const loadNotificationModules = async () => {
         },
       });
     } catch (error) {
-      console.log('⚠️ Failed to load notification modules:', error);
+      debugLog('⚠️ Failed to load notification modules:', error);
     }
   }
   return { Notifications, Device };
@@ -171,7 +179,7 @@ class NotificationService {
     try {
       // Skip notifications on web platform
       if (Platform.OS === 'web') {
-        console.log('🌐 Web platform detected - using browser notifications if available');
+        debugLog('🌐 Web platform detected - using browser notifications if available');
         return true;
       }
 
@@ -179,20 +187,20 @@ class NotificationService {
       const { Notifications: notificationModule, Device: deviceModule } = await loadNotificationModules();
 
       if (isExpoGoAndroidSkipNativeNotifications()) {
-        console.log(
+        debugLog(
           '📱 Expo Go (Android): skipping expo-notifications — rate alerts use in-app dialogs; use a dev build for system notifications.'
         );
         return true;
       }
 
       if (!notificationModule || !deviceModule) {
-        console.log('⚠️ Notifications module not available - using safe mode');
+        debugLog('⚠️ Notifications module not available - using safe mode');
         return false;
       }
 
       // Additional safety check
       if (!deviceModule.isDevice) {
-        console.log('📱 Notifications are not available on a device. Please use a physical device.');
+        debugLog('📱 Notifications are not available on a device. Please use a physical device.');
         return false;
       }
 
@@ -207,11 +215,11 @@ class NotificationService {
         }
 
         if (finalStatus !== 'granted') {
-          console.log('❌ Notification permissions not granted - continuing with safe mode');
+          debugLog('❌ Notification permissions not granted - continuing with safe mode');
           return false; // Allow app to continue without notifications
         }
 
-        console.log('✅ Local notification permissions granted');
+        debugLog('✅ Local notification permissions granted');
         return true;
       } catch (notifError) {
         console.error('❌ Notification permission API error - using safe mode:', notifError);
@@ -227,14 +235,14 @@ class NotificationService {
     try {
       // Skip push token generation on web platform
       if (Platform.OS === 'web') {
-        console.log('🌐 Web platform detected - push tokens not needed');
+        debugLog('🌐 Web platform detected - push tokens not needed');
         return undefined;
       }
 
       // Load notification modules dynamically
       const { Notifications: notificationModule } = await loadNotificationModules();
       if (!notificationModule) {
-        console.log('⚠️ Notifications module not available');
+        debugLog('⚠️ Notifications module not available');
         return undefined;
       }
 
@@ -243,14 +251,14 @@ class NotificationService {
         // This will throw in Expo Go SDK 53+ when trying to get push tokens
         const token = (await notificationModule.getExpoPushTokenAsync()).data;
         this.expoPushToken = token;
-        console.log('📱 Expo push token obtained (development build):', token);
+        debugLog('📱 Expo push token obtained (development build):', token);
         return token;
       } catch (pushTokenError) {
-        console.log('📱 Expo Go detected or push tokens unavailable - using local notifications only');
+        debugLog('📱 Expo Go detected or push tokens unavailable - using local notifications only');
         return undefined; // Return undefined instead of throwing
       }
     } catch (error) {
-      console.log('⚠️ Push token generation failed - continuing without push notifications:', error);
+      debugLog('⚠️ Push token generation failed - continuing without push notifications:', error);
       return undefined; // Return undefined instead of throwing
     }
   }
@@ -263,13 +271,13 @@ class NotificationService {
 
       // Skip scheduling on web platform
       if (Platform.OS === 'web') {
-        console.log('🌐 Web platform detected - skipping scheduled alerts for mobile app');
+        debugLog('🌐 Web platform detected - skipping scheduled alerts for mobile app');
         return null;
       }
 
       const prefs = await getNotificationUserSettings();
       if (!prefs.enabled) {
-        console.log('🔕 Notifications disabled in settings — skipping schedule');
+        debugLog('🔕 Notifications disabled in settings — skipping schedule');
         return null;
       }
 
@@ -282,7 +290,7 @@ class NotificationService {
       }
 
       if (!Notifications) {
-        console.log('📱 Native notification scheduling unavailable — skipping (Expo Go Android)');
+        debugLog('📱 Native notification scheduling unavailable — skipping (Expo Go Android)');
         return null;
       }
 
@@ -317,7 +325,7 @@ class NotificationService {
       });
 
       this.scheduledNotifications.set(alert.id, notificationId);
-      console.log(`🔔 Scheduled rate alert: ${alert.fromCurrency} → ${alert.toCurrency} (ID: ${notificationId})`);
+      debugLog(`🔔 Scheduled rate alert: ${alert.fromCurrency} → ${alert.toCurrency} (ID: ${notificationId})`);
       
       // Save the scheduled notification to local storage for persistence
       const scheduledData = await this.getScheduledNotifications();
@@ -344,7 +352,7 @@ class NotificationService {
           await Notifications.cancelScheduledNotificationAsync(notificationId);
         }
         this.scheduledNotifications.delete(alertId);
-        console.log(`🚫 Cancelled rate alert: ${alertId}`);
+        debugLog(`🚫 Cancelled rate alert: ${alertId}`);
       }
 
       // Remove from storage
@@ -364,13 +372,13 @@ class NotificationService {
 
       // Skip immediate alerts on web platform
       if (Platform.OS === 'web') {
-        console.log('🌐 Web platform detected - skipping immediate alerts for mobile app');
+        debugLog('🌐 Web platform detected - skipping immediate alerts for mobile app');
         return;
       }
 
       const prefs = await getNotificationUserSettings();
       if (!prefs.enabled) {
-        console.log('🔕 Notifications disabled in settings — skipping alert');
+        debugLog('🔕 Notifications disabled in settings — skipping alert');
         return;
       }
 
@@ -382,7 +390,7 @@ class NotificationService {
 
         if (!Notifications) {
           Alert.alert('🚀 Rate Alert Triggered!', message, [{ text: 'OK' }]);
-          console.log(`🚨 In-app alert (Expo Go Android): ${message}`);
+          debugLog(`🚨 In-app alert (Expo Go Android): ${message}`);
         } else {
           const channelId = await ensureAndroidRateAlertChannel(Notifications, prefs);
 
@@ -404,7 +412,7 @@ class NotificationService {
               Platform.OS === 'android' && channelId ? { channelId } : null,
           });
 
-          console.log(`🚨 Alert sent: ${message}`);
+          debugLog(`🚨 Alert sent: ${message}`);
         }
         
         // Mark alert as triggered
@@ -513,21 +521,21 @@ class NotificationService {
     try {
       // Skip setup on web platform
       if (Platform.OS === 'web') {
-        console.log('🌐 Web platform detected - skipping notification listeners');
+        debugLog('🌐 Web platform detected - skipping notification listeners');
         return;
       }
 
       // Load notification modules dynamically
       const { Notifications: notificationModule } = await loadNotificationModules();
       if (!notificationModule) {
-        console.log('⚠️ Notifications module not available for listeners');
+        debugLog('⚠️ Notifications module not available for listeners');
         return;
       }
 
       // Handle notification received while app is in foreground
       const receivedSubscription = notificationModule.addNotificationReceivedListener((notification: any) => {
         try {
-          console.log('📱 Notification received:', notification);
+          debugLog('📱 Notification received:', notification);
           const data = notification.request.content.data as any;
           
           if (data?.type === 'rate_check') {
@@ -541,7 +549,7 @@ class NotificationService {
       // Handle notification tapped
       const responseSubscription = notificationModule.addNotificationResponseReceivedListener((response: any) => {
         try {
-          console.log('👆 Notification response:', response);
+          debugLog('👆 Notification response:', response);
           const data = response.notification.request.content.data as any;
           
           if (data?.type === 'rate_triggered') {
@@ -552,7 +560,7 @@ class NotificationService {
         }
       });
 
-      console.log('✅ Notification listeners setup completed');
+      debugLog('✅ Notification listeners setup completed');
     } catch (error) {
       console.error('❌ Error setting up notification listeners:', error);
     }
@@ -574,7 +582,7 @@ class NotificationService {
   private async handleRateAlertTapped(data: any): Promise<void> {
     try {
       // You could navigate to specific screens here
-      console.log('🔗 Rate alert tapped:', data);
+      debugLog('🔗 Rate alert tapped:', data);
       
       // Update alert to mark it as triggered
       const alerts = await this.getSavedAlerts();
@@ -589,7 +597,7 @@ class NotificationService {
 
   private openNotificationSettings(): void {
     // This would open device notification settings
-    console.log('📱 Opening notification settings...');
+    debugLog('📱 Opening notification settings...');
   }
 
   // Load all scheduled notifications on app startup
@@ -597,12 +605,12 @@ class NotificationService {
     try {
       // Skip loading on web platform
       if (Platform.OS === 'web') {
-        console.log('🌐 Web platform detected - skipping scheduled notifications for mobile app');
+        debugLog('🌐 Web platform detected - skipping scheduled notifications for mobile app');
         return;
       }
 
       const scheduledData = await this.getScheduledNotifications();
-      console.log(`📋 Loaded ${Object.keys(scheduledData).length} scheduled notifications`);
+      debugLog(`📋 Loaded ${Object.keys(scheduledData).length} scheduled notifications`);
       
       // Note: Unfortunately, we can't reschedule notifications after app restart
       // This is a limitation of Expo's notification system
@@ -619,7 +627,7 @@ class NotificationService {
         await Notifications.cancelAllScheduledNotificationsAsync();
       }
       this.scheduledNotifications.clear();
-      console.log('🧹 Cleaned up all notifications');
+      debugLog('🧹 Cleaned up all notifications');
     } catch (error) {
       console.error('❌ Error cleaning up notifications:', error);
     }

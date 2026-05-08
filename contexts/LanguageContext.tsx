@@ -1,6 +1,8 @@
 import * as React from "react";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AM_FINANCE_EN, AM_FINANCE_HY } from './amFinance.i18n';
+import { AM_FREELANCE_EN, AM_FREELANCE_HY } from "./amFreelance.i18n";
 
 export type Language = 'en' | 'hy' | 'ru' | 'es' | 'zh' | 'hi';
 
@@ -15,7 +17,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const translations = {
   en: {
-    'app.title': 'ExRatio',
+    'app.title': 'Finhub',
     'app.subtitle': 'Live rates & smart conversion',
     // App & Navigation    // Dashboard
     'dashboard.title': 'Dashboard',
@@ -24,9 +26,6 @@ const translations = {
     'dashboard.multiCurrency': 'Multi Currency',
     'dashboard.rateAlerts': 'Rate Alerts',
     'dashboard.savedRates': 'Saved Rates',
-    'dashboard.features': 'Dashboard Features',
-    'dashboard.features.description': 'Complete currency conversion suite with advanced features',
-    'dashboard.features.tapNext': 'Tap for next',
     
     // Quick Actions
     'quick.action.converter': 'Currency Converter',
@@ -45,6 +44,23 @@ const translations = {
     'quick.action.calculator': 'Quick Calculator',
     'quick.action.calculator.desc': 'Open basic math calculator',
     'quick.action.calculator.hide': 'Hide calculator widget',
+    'quick.action.loanCalculator': 'Loan calculator',
+    'quick.action.touristCalc': 'Տուրիստական հաշվիչ',
+
+    'touristCalc.share.title': 'Տուրիստական հաշվիչ',
+    'touristCalc.field.amount': 'Գումար (արտարժույթ)',
+    'touristCalc.field.rate': 'Փոխարժեք (դեպի AMD)',
+    'touristCalc.field.feePct': 'Միջնորդավճար (%)',
+    'touristCalc.field.discountPct': 'Զեղչ (%)',
+    'touristCalc.field.tipPct': 'Թեյավճար (%)',
+    'touristCalc.result.discount': 'Զեղչ',
+    'touristCalc.result.subtotal': 'Ենթագումար',
+    'touristCalc.result.tip': 'Թեյավճար',
+    'touristCalc.result.total': 'Ընդհանուր',
+    'touristCalc.result.fee': 'Միջնորդավճար',
+    'touristCalc.result.net': 'Զուտ գումար',
+    'touristCalc.result.received': 'Ստացվող գումար (AMD)',
+    'touristCalc.invalid': 'Անվավեր տվյալներ',
     
     // Currency Converter
     'converter.title': 'Currency Converter',
@@ -220,6 +236,7 @@ const translations = {
     'common.error': 'Error',
     'common.retry': 'Retry',
     'common.close': 'Close',
+    'common.share': 'Share',
     'common.save': 'Save',
     'common.cancel': 'Cancel',
     'common.delete': 'Delete',
@@ -248,12 +265,6 @@ const translations = {
 
     // Dynamic Content
     'dynamic.savedCount': '({count})',
-    
-    // Features
-    'feature.multiCurrency.title': 'Multi-Currency Converter',
-    'feature.multiCurrency.desc': 'Convert to multiple currencies instantly with live rates',
-    'feature.calculator.title': 'Calculator Integration',
-    'feature.calculator.desc': 'Built-in calculator for amount calculations',
     
     // Calculator
     'calculator.title': 'Calculator',
@@ -312,12 +323,6 @@ const translations = {
     'calculator.loanErrTerm': 'Enter a valid term in months',
     'calculator.loanHistoryLine': 'Loan {principal} @ {rate}% × {months} mo → {payment}/mo',
     'calculator.loanFootnote': 'Fixed-rate amortizing loan; excludes fees.',
-    'feature.offline.title': 'Offline Mode',
-    'feature.offline.desc': 'Works without internet using cached rates',
-    'feature.location.title': 'Auto-Detect Location',
-    'feature.location.desc': 'Automatically detects your country and sets default currency',
-    'feature.caching.title': 'Smart Caching',
-    'feature.caching.desc': 'Intelligent rate caching with offline fallbacks',
     
     // Location
     'location.detect': 'Detect Location',
@@ -336,7 +341,7 @@ const translations = {
     'time.nextUpdate': 'Next update',
 
     // Onboarding Guide
-    'onboarding.welcome': 'Welcome to ExRatio!',
+    'onboarding.welcome': 'Welcome to Fin hub!',
     'onboarding.welcomeDesc': 'Your professional currency converter with real-time rates and advanced features.',
     'onboarding.convert': 'Convert Currencies Instantly',
     'onboarding.convertDesc': 'Use the main converter to quickly convert between any currencies with live exchange rates.',
@@ -409,7 +414,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'Create Account',
-    'signup.subtitle': 'Join ExRatio to sync your data',
+    'signup.subtitle': 'Join Fin hub to sync your data',
     'signup.usernameOptional': 'Username (Optional)',
     'signup.chooseUsername': 'Choose a username',
     'signup.preferredLanguage': 'Preferred Language',
@@ -449,9 +454,11 @@ const translations = {
     'chart.timePeriods.1Y': '1 year',
     'quick.action.charts': 'Charts',
     'charts.title': 'Currency rate charts',
+    ...AM_FINANCE_EN,
+    ...AM_FREELANCE_EN,
   },
   hy: {
-    'app.title': 'ExRatio',
+    'app.title': 'Finhub',
     'app.subtitle': 'Արժույթի գործիքներ',
     // Armenian    
     'dashboard.title': 'Վահանակ',
@@ -460,9 +467,6 @@ const translations = {
     'dashboard.multiCurrency': 'Բազմարժույթ',
     'dashboard.rateAlerts': 'Դրույքի ծանուցումներ',
     'dashboard.savedRates': 'Պահպանված դրույքներ',
-    'dashboard.features': 'Վահանակի հնարավորություններ',
-    'dashboard.features.description': 'Արժույթի փոխարկման ամբողջական գործիքակազմ',
-    'dashboard.features.tapNext': 'Հաջորդը',
     
     'quick.action.converter': 'Տարադրամի փոխանակում',
     'quick.action.converter.desc': 'Պրոֆեսիոնալ փոխանակում՝ լիարժեք գործառույթներով',
@@ -480,6 +484,23 @@ const translations = {
     'quick.action.calculator': 'Հաշվիչ',
     'quick.action.calculator.desc': 'Բացել բազմաֆունկցիոնալ հաշվիչը',
     'quick.action.calculator.hide': 'Թաքցնել հաշվիչը',
+    'quick.action.loanCalculator': 'Վարկի հաշվիչ',
+    'quick.action.touristCalc': 'Տուրիստական հաշվիչ',
+
+    'touristCalc.share.title': 'Տուրիստական հաշվիչ',
+    'touristCalc.field.amount': 'Գումար (արտարժույթ)',
+    'touristCalc.field.rate': 'Փոխարժեք (դեպի AMD)',
+    'touristCalc.field.feePct': 'Միջնորդավճար (%)',
+    'touristCalc.field.discountPct': 'Զեղչ (%)',
+    'touristCalc.field.tipPct': 'Թեյավճար (%)',
+    'touristCalc.result.discount': 'Զեղչ',
+    'touristCalc.result.subtotal': 'Ենթագումար',
+    'touristCalc.result.tip': 'Թեյավճար',
+    'touristCalc.result.total': 'Ընդհանուր',
+    'touristCalc.result.fee': 'Միջնորդավճար',
+    'touristCalc.result.net': 'Զուտ գումար',
+    'touristCalc.result.received': 'Ստացվող գումար (AMD)',
+    'touristCalc.invalid': 'Անվավեր տվյալներ',
     
     'converter.title': 'Փոխարկիչ',
     'converter.subtitle': 'Պրոֆեսիոնալ փոխարկիչ՝ լիարժեք գործառույթներով',
@@ -541,6 +562,7 @@ const translations = {
     'common.error': 'Սխալ',
     'common.retry': 'Կրկին փորձել',
     'common.close': 'Փակել',
+    'common.share': 'Կիսվել',
     'common.save': 'Պահպանել',
     'common.cancel': 'Չեղարկել',
     'common.delete': 'Հեռացնել',
@@ -698,12 +720,6 @@ const translations = {
     // Errors & Messages
     'error.duplicateCurrency': 'Կրկնվող արժույթ',
     
-    // Features
-    'feature.multiCurrency.title': 'Բազմարժույթ հաշվիչ',
-    'feature.multiCurrency.desc': 'Արագ հաշվարկ բազմաթիվ արժույթներով՝ թարմացված փոխարժեքով։',
-    'feature.calculator.title': 'Հաշվիչ',
-    'feature.calculator.desc': 'Ներկառուցված հաշվիչ մաթեմատիկական հաշվարկների համար',
-    
     // Calculator
     'calculator.title': 'Հաշվիչ',
     'calculator.close': 'Փակել',
@@ -755,18 +771,13 @@ const translations = {
     'calculator.loanCalculate': 'Հաշվել',
     'calculator.loanTotalInterest': 'Ընդհանուր տոկոս',
     'calculator.loanTotalPaid': 'Ընդհանուր մարում',
+    'calculator.loanMonthlyPayment': 'Ամսական վճար',
     'calculator.loanDisplayHint': 'Մուտքագրեք գումարը, տոկոսադրույքը և ժամկետը ամիսներով',
     'calculator.loanErrPrincipal': 'Մուտքագրեք վավեր գումար',
     'calculator.loanErrRate': 'Մուտքագրեք վավեր տարեկան տոկոս',
     'calculator.loanErrTerm': 'Մուտքագրեք վավեր ժամկետ (ամիս)',
     'calculator.loanHistoryLine': 'Վարկ {principal} @ {rate}% × {months} ամիս → {payment}/ամիս',
     'calculator.loanFootnote': 'Ֆիքսված տոկոս, անուիտետ; առանց միջնորդավճարի։',
-    'feature.offline.title': 'Առցանց ռեժիմ',
-    'feature.offline.desc': 'Աշխատում է առանց ինտերնետի` օգտագործելով քեշավորված արժեքները',
-    'feature.location.title': 'Ավտոմատ տեղորոշում',
-    'feature.location.desc': 'Ավտոմատ որոշում է երկիրը և ընտրում արժույթը',
-    'feature.caching.title': 'Խելացի քեշավորում',
-    'feature.caching.desc': 'Արժեքների քեշավորում առանց ինտերնետի',
     
     'footer.copyright': '© 2025 {appTitle} - {suiteName}',
     'footer.suiteName': 'Արժույթի մասնագիտական փոխանակում',
@@ -777,7 +788,7 @@ const translations = {
     'time.nextUpdate': 'Հաջորդ',
 
     // Onboarding Guide
-    'onboarding.welcome': 'Բարի գալուստ ExRatio!',
+    'onboarding.welcome': 'Բարի գալուստ Fin hub!',
     'onboarding.welcomeDesc': 'Թարմ ու ճշգրիտ փոխարժեքներ՝ լիարժեք գործիքներով և առաջադեմ հնարավորություններով։',
     'onboarding.convert': 'Արժույթները փոխանակեք անմիջապես',
     'onboarding.convertDesc': 'Հիմնական փոխանակումը թույլ է տալիս ակնթարթորեն իմանալ ներկայիս փոխարժեքներն ու կատարել արժույթների փոխարկում։',
@@ -845,7 +856,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'Ստեղծել հաշիվ',
-    'signup.subtitle': 'Միացեք ExRatio-ին՝ ձեր տվյալները համաժամանակեցնելու համար',
+    'signup.subtitle': 'Միացեք Fin hub-ին՝ ձեր տվյալները համաժամանակեցնելու համար',
     'signup.usernameOptional': 'Օգտանուն (ըստ ցանկության)',
     'signup.chooseUsername': 'Ընտրեք օգտանուն',
     'signup.preferredLanguage': 'Նախընտրած լեզու',
@@ -861,9 +872,11 @@ const translations = {
     'signup.alreadyHaveAccount': 'Արդեն ունե՞ք հաշիվ',
     'signup.signIn': 'Մուտք գործել',
     'signup.selectLanguage': 'Ընտրել լեզու',
+    ...AM_FINANCE_HY,
+    ...AM_FREELANCE_HY,
   },
   ru: {
-    'app.title': 'ExRatio',
+    'app.title': 'Finhub',
     'app.subtitle': 'Курсы и конвертация',
     // Russian    
     'dashboard.title': 'Панель',
@@ -872,9 +885,6 @@ const translations = {
     'dashboard.multiCurrency': 'Мультивалютный',
     'dashboard.rateAlerts': 'Уведомления о курсах',
     'dashboard.savedRates': 'Сохраненные курсы',
-    'dashboard.features': 'Возможности панели',
-    'dashboard.features.description': 'Полный набор конвертации валют с расширенными функциями',
-    'dashboard.features.tapNext': 'Дальше',
     
     // Compact versions for header buttons    
     'quick.action.converter': 'Конвертер валют',
@@ -893,6 +903,7 @@ const translations = {
     'quick.action.calculator': 'Быстрый калькулятор',
     'quick.action.calculator.desc': 'Открыть базовый математический калькулятор',
     'quick.action.calculator.hide': 'Скрыть виджет калькулятора',
+    'quick.action.loanCalculator': 'Кредитный калькулятор',
     
     'converter.title': 'Конвертер валют',
     'converter.subtitle': 'Полный набор конвертации валют с расширенными функциями',
@@ -1008,11 +1019,6 @@ const translations = {
     // Errors & Messages
     'error.duplicateCurrency': 'Дубликат валюты',
     
-    'feature.multiCurrency.title': 'Мультивалютный конвертер',
-    'feature.multiCurrency.desc': 'Быстрая конвертация в несколько валют с курсами в реальном времени',
-    'feature.calculator.title': 'Интеграция калькулятора',
-    'feature.calculator.desc': 'Встроенный калькулятор для расчета сумм',
-    
     // Calculator
     'calculator.title': 'Калькулятор',
     'calculator.close': 'Закрыть',
@@ -1070,12 +1076,6 @@ const translations = {
     'calculator.loanErrTerm': 'Введите срок в месяцах',
     'calculator.loanHistoryLine': 'Кредит {principal} @ {rate}% × {months} мес → {payment}/мес',
     'calculator.loanFootnote': 'Аннуитет, фиксированная ставка; без учёта комиссий.',
-    'feature.offline.title': 'Автономный режим',
-    'feature.offline.desc': 'Работает без интернета, используя кэшированные курсы',
-    'feature.location.title': 'Автоопределение местоположения',
-    'feature.location.desc': 'Автоматически определяет вашу страну и устанавливает валюту по умолчанию',
-    'feature.caching.title': 'Умное кэширование',
-    'feature.caching.desc': 'Интеллектуальное кэширование курсов с автономными резервными копиями',
     
     'footer.copyright': '© 2025 {appTitle} - {suiteName}',
     'footer.suiteName': 'Профессиональный набор конвертеров валют',
@@ -1086,7 +1086,7 @@ const translations = {
     'time.nextUpdate': 'Следующее',
 
     // Onboarding Guide
-    'onboarding.welcome': 'Добро пожаловать в ExRatio!',
+    'onboarding.welcome': 'Добро пожаловать в Fin hub!',
     'onboarding.welcomeDesc': 'Ваш профессиональный конвертер валют с курсами в реальном времени и расширенными функциями.',
     'onboarding.convert': 'Конвертируйте валюты мгновенно',
     'onboarding.convertDesc': 'Используйте основной конвертер для быстрого конвертирования между любыми валютами с курсами в реальном времени.',
@@ -1178,7 +1178,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'Создать аккаунт',
-    'signup.subtitle': 'Присоединяйтесь к ExRatio для синхронизации данных',
+    'signup.subtitle': 'Присоединяйтесь к Fin hub для синхронизации данных',
     'signup.usernameOptional': 'Имя пользователя (необязательно)',
     'signup.chooseUsername': 'Выберите имя пользователя',
     'signup.preferredLanguage': 'Предпочитаемый язык',
@@ -1245,9 +1245,11 @@ const translations = {
     'rateAlerts.resetButton': 'Сбросить',
     'rateAlerts.resetFailed': 'Не удалось сбросить оповещение',
     'rateAlerts.reset': 'Сбросить',
+    ...AM_FINANCE_EN,
+    ...AM_FREELANCE_EN,
   },
   es: {
-    'app.title': 'ExRatio',
+    'app.title': 'Finhub',
     'app.subtitle': 'Tipos y conversión',
     // Spanish    
     'dashboard.title': 'Panel',
@@ -1256,9 +1258,6 @@ const translations = {
     'dashboard.multiCurrency': 'Multi Moneda',
     'dashboard.rateAlerts': 'Alertas de Tipo',
     'dashboard.savedRates': 'Tasas Guardadas',
-    'dashboard.features': 'Características del Panel',
-    'dashboard.features.description': 'Suite completa de conversión de moneda con funciones avanzadas',
-    'dashboard.features.tapNext': 'Siguiente',
     
     'quick.action.converter': 'Convertidor de Moneda',
     'quick.action.converter.desc': 'Convertidor profesional con todas las funciones',
@@ -1276,6 +1275,7 @@ const translations = {
     'quick.action.calculator': 'Calculadora Rápida',
     'quick.action.calculator.desc': 'Abrir calculadora matemática básica',
     'quick.action.calculator.hide': 'Ocultar widget de calculadora',
+    'quick.action.loanCalculator': 'Calculadora de préstamo',
     
     'converter.title': 'Convertidor de Moneda',
     'converter.subtitle': 'Suite completa de conversión de moneda con funciones avanzadas',
@@ -1392,11 +1392,6 @@ const translations = {
     // Errors & Messages
     'error.duplicateCurrency': 'Moneda Duplicada',
     
-    'feature.multiCurrency.title': 'Convertidor Multi-Moneda',
-    'feature.multiCurrency.desc': 'Convierte a múltiples monedas instantáneamente con tasas en vivo',
-    'feature.calculator.title': 'Integración de Calculadora',
-    'feature.calculator.desc': 'Calculadora integrada para cálculos de cantidad',
-    
     // Calculator
     'calculator.title': 'Calculadora',
     'calculator.close': 'Cerrar',
@@ -1454,12 +1449,6 @@ const translations = {
     'calculator.loanErrTerm': 'Introduce un plazo válido en meses',
     'calculator.loanHistoryLine': 'Préstamo {principal} @ {rate}% × {months} mes → {payment}/mes',
     'calculator.loanFootnote': 'Préstamo amortizado a tipo fijo; sin comisiones.',
-    'feature.offline.title': 'Modo Sin Conexión',
-    'feature.offline.desc': 'Funciona sin internet usando tasas en caché',
-    'feature.location.title': 'Detección Automática de Ubicación',
-    'feature.location.desc': 'Detecta automáticamente tu país y establece la moneda por defecto',
-    'feature.caching.title': 'Almacenamiento Inteligente',
-    'feature.caching.desc': 'Almacenamiento inteligente de tasas con respaldos sin conexión',
     
     'footer.copyright': '© 2025 {appTitle} - {suiteName}',
     'footer.suiteName': 'Suite Profesional de Conversores de Moneda',
@@ -1470,7 +1459,7 @@ const translations = {
     'time.nextUpdate': 'Próxima',
 
     // Onboarding Guide
-    'onboarding.welcome': '¡Bienvenido a ExRatio!',
+    'onboarding.welcome': '¡Bienvenido a Fin hub!',
     'onboarding.welcomeDesc': 'Tu convertidor de moneda profesional con tasas en tiempo real y funciones avanzadas.',
     'onboarding.convert': 'Convierte Monedas Instantáneamente',
     'onboarding.convertDesc': 'Usa el convertidor principal para convertir rápidamente entre cualquier moneda con tasas de cambio en vivo.',
@@ -1545,7 +1534,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'Crear Cuenta',
-    'signup.subtitle': 'Únete a ExRatio para sincronizar tus datos',
+    'signup.subtitle': 'Únete a Fin hub para sincronizar tus datos',
     'signup.usernameOptional': 'Nombre de usuario (Opcional)',
     'signup.chooseUsername': 'Elige un nombre de usuario',
     'signup.preferredLanguage': 'Idioma preferido',
@@ -1629,9 +1618,11 @@ const translations = {
     'chart.timePeriods.1Y': '1 año',
     'quick.action.charts': 'Gráficos',
     'charts.title': 'Gráficos de Tipos de Cambio',
+    ...AM_FINANCE_EN,
+    ...AM_FREELANCE_EN,
   },
   zh: {
-    'app.title': 'ExRatio',
+    'app.title': 'Finhub',
     'app.subtitle': '汇率与换算',
     // Chinese (Simplified)    
     'dashboard.title': '仪表板',
@@ -1640,9 +1631,6 @@ const translations = {
     'dashboard.multiCurrency': '多货币',
     'dashboard.rateAlerts': '汇率提醒',
     'dashboard.savedRates': '已保存汇率',
-    'dashboard.features': '仪表板功能',
-    'dashboard.features.description': '带高级功能的完整货币转换套件',
-    'dashboard.features.tapNext': '下一个',
     
     'quick.action.converter': '货币转换器',
     'quick.action.converter.desc': '带所有功能的专业转换器',
@@ -1660,6 +1648,7 @@ const translations = {
     'quick.action.calculator': '快速计算器',
     'quick.action.calculator.desc': '打开基本数学计算器',
     'quick.action.calculator.hide': '隐藏计算器小部件',
+    'quick.action.loanCalculator': '贷款计算器',
     
     'converter.title': '货币转换器',
     'converter.subtitle': '带高级功能的完整货币转换套件',
@@ -1774,11 +1763,6 @@ const translations = {
     // Errors & Messages
     'error.duplicateCurrency': '重复货币',
     
-    'feature.multiCurrency.title': '多货币转换器',
-    'feature.multiCurrency.desc': '使用实时汇率即时转换为多种货币',
-    'feature.calculator.title': '计算器集成',
-    'feature.calculator.desc': '内置计算器用于金额计算',
-    
     // Calculator
     'calculator.title': '计算器',
     'calculator.close': '关闭',
@@ -1836,12 +1820,6 @@ const translations = {
     'calculator.loanErrTerm': '请输入有效月数',
     'calculator.loanHistoryLine': '贷款 {principal} @ {rate}% × {months} 月 → {payment}/月',
     'calculator.loanFootnote': '固定利率等额本息；不含手续费。',
-    'feature.offline.title': '离线模式',
-    'feature.offline.desc': '使用缓存汇率无需互联网即可工作',
-    'feature.location.title': '自动检测位置',
-    'feature.location.desc': '自动检测您的国家并设置默认货币',
-    'feature.caching.title': '智能缓存',
-    'feature.caching.desc': '智能汇率缓存和离线备份',
     
     'footer.copyright': '© 2025 {appTitle} - {suiteName}',
     'footer.suiteName': '专业货币转换器套件',
@@ -1852,7 +1830,7 @@ const translations = {
     'time.nextUpdate': '下次更新',
 
     // Onboarding Guide
-    'onboarding.welcome': '欢迎来到ExRatio！',
+    'onboarding.welcome': '欢迎来到Fin hub！',
     'onboarding.welcomeDesc': '您的专业货币转换器，具有实时汇率和高级功能。',
     'onboarding.convert': '即时转换货币',
     'onboarding.convertDesc': '使用主转换器快速转换任何货币之间的汇率，使用实时汇率。',
@@ -1927,7 +1905,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': '创建账户',
-    'signup.subtitle': '加入ExRatio以同步您的数据',
+    'signup.subtitle': '加入Fin hub以同步您的数据',
     'signup.usernameOptional': '用户名（可选）',
     'signup.chooseUsername': '选择用户名',
     'signup.preferredLanguage': '首选语言',
@@ -2011,9 +1989,11 @@ const translations = {
     'chart.timePeriods.1Y': '1年',
     'quick.action.charts': '图表',
     'charts.title': '汇率图表',
+    ...AM_FINANCE_EN,
+    ...AM_FREELANCE_EN,
   },
   hi: {
-    'app.title': 'ExRatio',
+    'app.title': 'Finhub',
     'app.subtitle': 'दरें और रूपांतरण',
     // Hindi    
     'dashboard.title': 'डैशबोर्ड',
@@ -2022,9 +2002,6 @@ const translations = {
     'dashboard.multiCurrency': 'मल्टी करेंसी',
     'dashboard.rateAlerts': 'रेट अलर्ट्स',
     'dashboard.savedRates': 'सेव्ड रेट्स',
-    'dashboard.features': 'डैशबोर्ड फीचर्स',
-    'dashboard.features.description': 'उन्नत सुविधाओं के साथ पूर्ण मुद्रा रूपांतरण सूट',
-    'dashboard.features.tapNext': 'अगला',
     
     'quick.action.converter': 'मुद्रा कन्वर्टर',
     'quick.action.converter.desc': 'सभी सुविधाओं के साथ पेशेवर कन्वर्टर',
@@ -2042,6 +2019,7 @@ const translations = {
     'quick.action.calculator': 'त्वरित कैलकुलेटर',
     'quick.action.calculator.desc': 'बेसिक मैथ कैलकुलेटर खोलें',
     'quick.action.calculator.hide': 'कैलकुलेटर विजेट छुपाएं',
+    'quick.action.loanCalculator': 'लोन कैलकुलेटर',
     
     'converter.title': 'मुद्रा कन्वर्टर',
     'converter.subtitle': 'उन्नत सुविधाओं के साथ पूर्ण मुद्रा रूपांतरण सूट',
@@ -2157,11 +2135,6 @@ const translations = {
     // Errors & Messages
     'error.duplicateCurrency': 'डुप्लिकेट करेंसी',
     
-    'feature.multiCurrency.title': 'मल्टी-करेंसी कन्वर्टर',
-    'feature.multiCurrency.desc': 'लाइव दरों के साथ तुरंत कई मुद्राओं में रूपांतरण',
-    'feature.calculator.title': 'कैलकुलेटर इंटीग्रेशन',
-    'feature.calculator.desc': 'राशि गणनाओं के लिए बिल्ट-इन कैलकुलेटर',
-    
     // Calculator
     'calculator.title': 'कैलकुलेटर',
     'calculator.close': 'बंद करें',
@@ -2219,12 +2192,6 @@ const translations = {
     'calculator.loanErrTerm': 'मान्य अवधि (महीने) दर्ज करें',
     'calculator.loanHistoryLine': 'लोन {principal} @ {rate}% × {months} मा → {payment}/मा',
     'calculator.loanFootnote': 'स्थिर दर, समान किस्त; शुल्क शामिल नहीं।',
-    'feature.offline.title': 'ऑफ़लाइन मोड',
-    'feature.offline.desc': 'कैश्ड दरों का उपयोग करके बिना इंटरनेट के काम करता है',
-    'feature.location.title': 'ऑटो-लोकेशन डिटेक्शन',
-    'feature.location.desc': 'स्वचालित रूप से आपका देश पहचानता है और डिफ़ॉल्ट करेंसी सेट करता है',
-    'feature.caching.title': 'स्मार्ट कैशिंग',
-    'feature.caching.desc': 'ऑफ़लाइन बैकअप के साथ स्मार्ट रेट कैशिंग',
     
     'footer.copyright': '© 2025 {appTitle} - {suiteName}',
     'footer.suiteName': 'पेशेवर मुद्रा कन्वर्टर सूट',
@@ -2235,7 +2202,7 @@ const translations = {
     'time.nextUpdate': 'अगला अपडेट',
 
     // Onboarding Guide
-    'onboarding.welcome': 'ExRatio में आपका स्वागत है!',
+    'onboarding.welcome': 'Fin hub में आपका स्वागत है!',
     'onboarding.welcomeDesc': 'रियल-टाइम दरों और उन्नत सुविधाओं के साथ आपका पेशेवर मुद्रा कन्वर्टर।',
     'onboarding.convert': 'मुद्राएं तुरंत बदलें',
     'onboarding.convertDesc': 'लाइव एक्सचेंज दरों के साथ किसी भी मुद्राओं के बीच तेजी से बदलने के लिए मुख्य कन्वर्टर का उपयोग करें।',
@@ -2310,7 +2277,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'खाता बनाएं',
-    'signup.subtitle': 'अपना डेटा सिंक करने के लिए ExRatio से जुड़ें',
+    'signup.subtitle': 'अपना डेटा सिंक करने के लिए Fin hub से जुड़ें',
     'signup.usernameOptional': 'यूजरनेम (वैकल्पिक)',
     'signup.chooseUsername': 'यूजरनेम चुनें',
     'signup.preferredLanguage': 'पसंदीदा भाषा',
@@ -2394,6 +2361,8 @@ const translations = {
     'chart.timePeriods.1Y': '1 साल',
     'quick.action.charts': 'चार्ट',
     'charts.title': 'एक्सचेंज रेट चार्ट',
+    ...AM_FINANCE_EN,
+    ...AM_FREELANCE_EN,
   },
 };
 
@@ -2401,39 +2370,33 @@ type LanguageProviderProps = {
   children: ReactNode;
 };
 
+/** Application UI is Armenian-only; other locale objects remain for reference/migration. */
+const APP_LANGUAGE: Language = 'hy';
+
 export function LanguageProvider({ children }: LanguageProviderProps) {
-  const [language, setLanguageState] = useState<Language>('en');
+  const language = APP_LANGUAGE;
 
   useEffect(() => {
-    loadLanguage();
+    AsyncStorage.setItem('appLanguage', APP_LANGUAGE).catch((error) => {
+      console.error('Failed to persist language preference:', error);
+    });
   }, []);
 
-  const loadLanguage = async () => {
+  const setLanguage = async (_lang: Language) => {
     try {
-      const savedLanguage = await AsyncStorage.getItem('appLanguage');
-      if (savedLanguage && ['en', 'hy', 'ru', 'es', 'zh', 'hi'].includes(savedLanguage)) {
-        setLanguageState(savedLanguage as Language);
-      }
-    } catch (error) {
-      console.error('Failed to load language preference:', error);
-    }
-  };
-
-  const setLanguage = async (lang: Language) => {
-    try {
-      setLanguageState(lang);
-      await AsyncStorage.setItem('appLanguage', lang);
+      await AsyncStorage.setItem('appLanguage', APP_LANGUAGE);
     } catch (error) {
       console.error('Failed to save language preference:', error);
     }
   };
 
   const t = (key: string): string => {
-    return (translations[language] as any)[key] || key;
+    const hy = (translations.hy as Record<string, string | undefined>)[key];
+    return hy != null && hy !== '' ? hy : key;
   };
 
   const tWithParams = (key: string, params: { [key: string]: string | number }): string => {
-    let translation = (translations[language] as any)[key] || key;
+    let translation = t(key);
     
     // Replace placeholders like {amount}, {fromCurrency}, etc.
     Object.keys(params).forEach(paramKey => {

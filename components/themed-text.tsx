@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, Text, type TextProps } from "react-native";
 
 import { useThemeColor } from "@/hooks/use-theme-color";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
@@ -19,11 +18,9 @@ export function ThemedText({
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
   const linkTint = useThemeColor({}, "primary");
-  const { language } = useLanguage();
 
-  // Reduce font size by 2px for Armenian and Russian languages
-  const isSmallerLanguage = language === 'hy' || language === 'ru';
-  const fontSizeAdjustment = isSmallerLanguage ? -2 : 0;
+  /** Armenian script reads better with a slight size reduction. */
+  const fontSizeAdjustment = -2;
 
   return (
     <Text

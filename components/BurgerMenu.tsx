@@ -24,6 +24,8 @@ export type BurgerMenuQuickActions = {
   openSavedRates: () => void;
   openRateAlerts: () => void;
   openCalculator: () => void;
+  openLoanCalculator: () => void;
+  openArmeniaFinance?: () => void;
 };
 
 interface BurgerMenuProps {
@@ -127,6 +129,22 @@ export default function BurgerMenu({ style, quickActions }: BurgerMenuProps) {
           icon: 'calculator-outline',
           onPress: () => closeThen(quickActions.openCalculator),
         },
+        {
+          id: 'qa-loan',
+          title: t('quick.action.loanCalculator'),
+          icon: 'wallet-outline',
+          onPress: () => closeThen(quickActions.openLoanCalculator),
+        },
+        ...(quickActions.openArmeniaFinance
+          ? [
+              {
+                id: 'qa-am-finance',
+                title: t('quick.action.armeniaFinance'),
+                icon: 'flag-outline' as const,
+                onPress: () => closeThen(quickActions.openArmeniaFinance!),
+              },
+            ]
+          : []),
       ]
     : [];
 
@@ -286,7 +304,7 @@ export default function BurgerMenu({ style, quickActions }: BurgerMenuProps) {
                     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
                   }}
                 >
-                  ExRatio
+                  {t('app.title')}
                 </ThemedText>
                 <ThemedText
                   style={{
@@ -365,7 +383,7 @@ export default function BurgerMenu({ style, quickActions }: BurgerMenuProps) {
                   color: textSecondaryColor,
                   textAlign: 'center',
                 }}>
-                  ExRatio v1.0
+                  {t('app.title')} v1.0
                 </ThemedText>
               </View>
             </ScrollView>

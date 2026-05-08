@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   TextInput,
@@ -22,6 +22,7 @@ import alertCheckerService from "@/lib/alertCheckerService";
 import { getAsyncStorage } from "@/lib/storage";
 import { FormField } from "@/constants/theme";
 import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
+import { formatDateDDMMYY } from "@/lib/dateFormat";
 
 interface RateAlert {
   id: string;
@@ -41,6 +42,7 @@ interface RateAlertManagerProps {
   onRatesUpdate: () => void;
   currenciesData?: any;
   inModal?: boolean; // Hide header when used inside DashboardModal
+  onShareableMessageChange?: (message: string | null) => void;
 }
 
 interface AlertFormData {
@@ -56,6 +58,7 @@ export default function RateAlertManager({
   onRatesUpdate,
   currenciesData,
   inModal = false,
+  onShareableMessageChange,
 }: RateAlertManagerProps) {
   const { t, tWithParams } = useLanguage();
   const { user } = useAuth();
@@ -91,6 +94,25 @@ export default function RateAlertManager({
     isActive: true,
   });
 
+  useEffect(() => {
+    if (!inModal || !onShareableMessageChange) return;
+    if (!rateAlerts.length) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const lines = [
+      t('rateAlerts.title'),
+      ...rateAlerts.map((a) => {
+        const dir =
+          a.condition === 'above'
+            ? t('rateAlerts.direction.above')
+            : t('rateAlerts.direction.below');
+        const status = a.is_active ? t('rateAlerts.active') : t('common.disabled');
+        return `• ${a.from_currency}→${a.to_currency}: ${dir} ${a.target_rate} — ${status}`;
+      }),
+    ];
+    onShareableMessageChange(lines.join('\n'));
+  }, [inModal, onShareableMessageChange, rateAlerts, t]);
 
   const handleEditAlert = (alert: RateAlert) => {
     setEditingAlertId(alert.id);
@@ -486,7 +508,7 @@ export default function RateAlertManager({
                 <View style={styles.alertRow}>
                   <ThemedText style={[{ color: textSecondaryColor }, styles.alertLabel]}>{t('rateAlerts.created')}</ThemedText>
                   <ThemedText style={[{ color: textColor }, styles.alertValue]}>
-                    {new Date(alert.created_at).toLocaleDateString()}
+                    {formatDateDDMMYY(alert.created_at)}
                   </ThemedText>
                 </View>
               </View>

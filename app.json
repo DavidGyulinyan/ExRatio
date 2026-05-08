@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "exratio-mobile",
+    "name": "Finhub",
     "slug": "ratesnap-mobile",
     "owner": "davidgyulinyan",
     "version": "1.0.0",
@@ -20,8 +20,8 @@
             "CFBundleURLSchemes": ["exratio-mobile"]
           }
         ],
-        "NSUserNotificationsUsageDescription": "ExRatio needs notification access to send you alerts when your saved exchange rates reach your target values.",
-        "NSLocationWhenInUseUsageDescription": "ExRatio needs location access to detect your local currency for better user experience.",
+        "NSUserNotificationsUsageDescription": "Finhub needs notification access to send you alerts when your saved exchange rates reach your target values.",
+        "NSLocationWhenInUseUsageDescription": "Finhub needs location access to detect your local currency for better user experience.",
         "UNUserNotificationCenterDelegate": true
       }
     },

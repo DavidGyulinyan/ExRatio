@@ -57,6 +57,8 @@ interface SavedRate {
 interface CurrencyConverterProps {
   onNavigateToDashboard?: () => void;
   inModal?: boolean;
+  /** When `inModal`, reports text suitable for the quick-action share control. */
+  onShareableMessageChange?: (message: string | null) => void;
 }
 
 interface Data {
@@ -76,8 +78,9 @@ interface Data {
 export default function CurrencyConverter({
   onNavigateToDashboard,
   inModal = false,
+  onShareableMessageChange,
 }: CurrencyConverterProps) {
-  const { t, tWithParams, language } = useLanguage();
+  const { t, tWithParams } = useLanguage();
   const [amount, setAmount] = useState<string>("1");
   const [convertedAmount, setConvertedAmount] = useState<string>("");
   const [currenciesData, setCurrenciesData] = useState<Data | null>(null);
@@ -944,6 +947,37 @@ export default function CurrencyConverter({
 
     return toRate / fromRate;
   }, [currenciesData, fromCurrency, toCurrency]);
+
+  useEffect(() => {
+    if (!inModal || !onShareableMessageChange) return;
+    if (!currenciesData || !convertedAmount || !fromCurrency || !toCurrency) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const inputAmount = parseFloat(amount);
+    if (!Number.isFinite(inputAmount) || inputAmount <= 0) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const rate = getExchangeRate();
+    if (!rate || !Number.isFinite(rate)) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const line1 = `${inputAmount.toLocaleString()} ${fromCurrency} → ${parseFloat(convertedAmount).toLocaleString()} ${toCurrency}`;
+    const line2 = `${t("converter.exchangeRate")}: 1 ${fromCurrency} = ${rate.toFixed(4)} ${toCurrency}`;
+    onShareableMessageChange([t("converter.title"), line1, line2].join("\n"));
+  }, [
+    inModal,
+    onShareableMessageChange,
+    amount,
+    convertedAmount,
+    fromCurrency,
+    toCurrency,
+    currenciesData,
+    getExchangeRate,
+    t,
+  ]);
 
   const handleConvert = useCallback(async (): Promise<void> => {
     console.log("🔄 Converting currencies...", {

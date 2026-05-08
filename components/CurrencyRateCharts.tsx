@@ -25,6 +25,7 @@ type Props = {
   days?: number;
   /** When true, outer shell is transparent (e.g. QuickActionModal + FinancialBackground). */
   inModal?: boolean;
+  onShareableMessageChange?: (message: string | null) => void;
 };
 
 type PeriodKey = "7D" | "30D" | "90D" | "1Y";
@@ -50,6 +51,7 @@ export default function CurrencyRateCharts({
   defaultTarget = "EUR",
   days = 30,
   inModal = false,
+  onShareableMessageChange,
 }: Props) {
   const { t } = useLanguage();
   const { currency: locationCurrency, loading: locationLoading } =
@@ -147,6 +149,59 @@ export default function CurrencyRateCharts({
   const minRate = values.length ? Math.min(...values) : undefined;
   const maxRate = values.length ? Math.max(...values) : undefined;
 
+  const trendColor =
+    changeAbs !== undefined && changeAbs < 0 ? errorColor : primaryColor;
+
+  useEffect(() => {
+    if (!inModal || !onShareableMessageChange) return;
+    if (!baseCurrency || !targetCurrency || baseCurrency === targetCurrency) {
+      onShareableMessageChange(null);
+      return;
+    }
+    const periodLabel = t(`chart.timePeriods.${period}`);
+    const lines: string[] = [
+      t("charts.title"),
+      `${baseCurrency} → ${targetCurrency}`,
+      periodLabel,
+    ];
+    if (loading) {
+      onShareableMessageChange(lines.join("\n"));
+      return;
+    }
+    if (error) {
+      lines.push(error);
+      onShareableMessageChange(lines.join("\n"));
+      return;
+    }
+    if (!hasChart || current === undefined) {
+      onShareableMessageChange(lines.join("\n"));
+      return;
+    }
+    lines.push(`${t("chart.currentRate")}: ${formatRate(current)}`);
+    if (changeAbs !== undefined && first !== undefined) {
+      const pctPart =
+        changePct !== undefined
+          ? ` (${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%)`
+          : "";
+      lines.push(`${t("chart.rateChange")}: ${formatRate(changeAbs)}${pctPart}`);
+    }
+    onShareableMessageChange(lines.join("\n"));
+  }, [
+    inModal,
+    onShareableMessageChange,
+    baseCurrency,
+    targetCurrency,
+    period,
+    loading,
+    error,
+    hasChart,
+    current,
+    first,
+    changeAbs,
+    changePct,
+    t,
+  ]);
+
   const [selectedPoint, setSelectedPoint] = useState<{
     value: number;
     label: string;
@@ -236,7 +291,7 @@ export default function CurrencyRateCharts({
       <View style={[styles.card, { backgroundColor: surfaceColor, borderColor }]}>
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
-            <View style={[styles.accent, { backgroundColor: primaryColor }]} />
+            <View style={[styles.accent, { backgroundColor: trendColor }]} />
             <View style={styles.cardHeaderText}>
               <ThemedText type="defaultSemiBold" style={{ color: textColor }}>
                 {t("charts.title")}
@@ -303,7 +358,7 @@ export default function CurrencyRateCharts({
                     ? textColor
                     : changeAbs >= 0
                       ? textColor
-                      : textSecondaryColor,
+                      : errorColor,
               }}
             >
               {changeAbs === undefined
@@ -377,7 +432,7 @@ export default function CurrencyRateCharts({
                 datasets: [
                   {
                     data: values,
-                    color: () => primaryColor,
+                    color: () => trendColor,
                     strokeWidth: 2,
                   },
                 ],
@@ -392,7 +447,7 @@ export default function CurrencyRateCharts({
               chartConfig={{
                 backgroundGradientFrom: surfaceColor,
                 backgroundGradientTo: surfaceColor,
-                color: () => primaryColor,
+                color: () => trendColor,
                 labelColor: () => textSecondaryColor,
                 decimalPlaces: 4,
                 propsForBackgroundLines: {
