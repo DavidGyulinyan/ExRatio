@@ -88,6 +88,8 @@ export default function MultiCurrencyConverter({
 
   // Storage key for multi-currency converter state
   const STORAGE_KEY = "multiCurrencyConverterState";
+  const STORAGE_TS_KEY = "multiCurrencyConverterState.ts";
+  const DB_REFRESH_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   // Maximum number of visible targets before showing "Show More"
   // const MAX_VISIBLE_TARGETS = 5; // Now using maxVisibleItems prop
@@ -278,37 +280,51 @@ export default function MultiCurrencyConverter({
     try {
       console.log("🔄 Loading saved multi-currency converter state...");
 
+      // Always load local cache first (fast open; no refetch-on-open).
+      const savedState = await AsyncStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        const {
+          amount: savedAmount,
+          fromCurrency: savedFromCurrency,
+          conversionTargets: savedTargets,
+        } = parsedState ?? {};
+
+        if (savedAmount) setAmount(String(savedAmount));
+        if (savedFromCurrency && currencyList.includes(savedFromCurrency)) {
+          setFromCurrency(savedFromCurrency);
+        }
+        if (savedTargets && Array.isArray(savedTargets)) {
+          const validTargets = savedTargets.filter(
+            (target: ConversionTarget) => currencyList.includes(target.currency)
+          );
+          if (validTargets.length > 0) setConversionTargets(validTargets);
+        }
+      }
+
+      setHasLoadedData(true);
+
+      // Signed-in users: refresh from DB only if cache is stale (TTL).
       if (user) {
-        // Authenticated user - load from database
-        console.log("👤 Authenticated user - loading from database");
-        const history = await UserDataService.getConverterHistory(1); // Get latest record
+        const tsRaw = await AsyncStorage.getItem(STORAGE_TS_KEY);
+        const ts = tsRaw ? Number(tsRaw) : 0;
+        const stale =
+          !ts || !Number.isFinite(ts) || Date.now() - ts > DB_REFRESH_TTL_MS;
+        if (!stale) return;
+
+        console.log(
+          "👤 Authenticated user - refreshing from database (stale cache)"
+        );
+        const history = await UserDataService.getConverterHistory(1);
         if (history && history.length > 0) {
           const latestRecord = history[0];
-          console.log("📦 Database state found:", {
-            fromCurrency: latestRecord.from_currency,
-            amount: latestRecord.amount,
-            targetsCount: latestRecord.target_currencies?.length,
-          });
-
-          // Load amount
-          if (latestRecord.amount) {
-            setAmount(latestRecord.amount.toString());
-            console.log("✅ Loaded amount from DB:", latestRecord.amount);
-          }
-
-          // Load fromCurrency if available and exists in currency list
+          if (latestRecord.amount) setAmount(latestRecord.amount.toString());
           if (
             latestRecord.from_currency &&
             currencyList.includes(latestRecord.from_currency)
           ) {
             setFromCurrency(latestRecord.from_currency);
-            console.log(
-              "✅ Loaded fromCurrency from DB:",
-              latestRecord.from_currency
-            );
           }
-
-          // Load target currencies only if they exist in current currency list
           if (
             latestRecord.target_currencies &&
             Array.isArray(latestRecord.target_currencies)
@@ -319,82 +335,10 @@ export default function MultiCurrencyConverter({
                 id: target.id || Date.now().toString() + Math.random(),
                 currency: target.currency,
               }));
-
-            if (validTargets.length > 0) {
-              setConversionTargets(validTargets);
-              console.log(
-                "✅ Loaded conversion targets from DB:",
-                validTargets.map((t) => t.currency)
-              );
-            } else {
-              console.log(
-                "⚠️ No valid conversion targets found in current currency list"
-              );
-            }
+            if (validTargets.length > 0) setConversionTargets(validTargets);
           }
-        } else {
-          console.log("ℹ️ No saved state found in database");
-          // For authenticated users with no database data, ensure state is cleared
-          setAmount("1"); // Keep default amount for new conversions
-          setFromCurrency("");
-          setConversionTargets([]);
         }
-        // Mark that data loading is complete
-        setHasLoadedData(true);
-      } else {
-        // Non-authenticated user - load from AsyncStorage
-        console.log("👤 Non-authenticated user - loading from AsyncStorage");
-        const savedState = await AsyncStorage.getItem(STORAGE_KEY);
-        if (savedState) {
-          const parsedState = JSON.parse(savedState);
-          const {
-            amount: savedAmount,
-            fromCurrency: savedFromCurrency,
-            conversionTargets: savedTargets,
-          } = parsedState;
-
-          console.log("📦 Saved state found:", {
-            savedAmount,
-            savedFromCurrency,
-            savedTargetsCount: savedTargets?.length,
-          });
-
-          // Load amount if available
-          if (savedAmount) {
-            setAmount(savedAmount);
-            console.log("✅ Loaded amount:", savedAmount);
-          }
-
-          // Load fromCurrency if available and exists in currency list
-          if (savedFromCurrency && currencyList.includes(savedFromCurrency)) {
-            setFromCurrency(savedFromCurrency);
-            console.log("✅ Loaded fromCurrency:", savedFromCurrency);
-          }
-
-          // Load target currencies only if they exist in current currency list
-          if (savedTargets && Array.isArray(savedTargets)) {
-            const validTargets = savedTargets.filter(
-              (target: ConversionTarget) =>
-                currencyList.includes(target.currency)
-            );
-
-            if (validTargets.length > 0) {
-              setConversionTargets(validTargets);
-              console.log(
-                "✅ Loaded conversion targets:",
-                validTargets.map((t) => t.currency)
-              );
-            } else {
-              console.log(
-                "⚠️ No valid conversion targets found in current currency list"
-              );
-            }
-          }
-        } else {
-          console.log("ℹ️ No saved state found in AsyncStorage");
-        }
-        // Mark that data loading is complete
-        setHasLoadedData(true);
+        await AsyncStorage.setItem(STORAGE_TS_KEY, String(Date.now()));
       }
     } catch (error) {
       console.error(
@@ -407,68 +351,16 @@ export default function MultiCurrencyConverter({
   // Save current state to storage or database
   const saveCurrentState = useCallback(async () => {
     try {
-      if (user) {
-        // Authenticated user - save state to database
-        console.log("👤 Authenticated user - saving state to database");
-
-        // Save converter state by calling saveConversion with empty results to update the record
-        const targetCurrencies = conversionTargets.map((target) => ({
-          currency: target.currency,
-          amount: 0, // Placeholder, will be updated when actual conversion happens
-          rate: 0, // Placeholder
-        }));
-
-        await saveConversion(
-          fromCurrency || "",
-          parseFloat(amount) || 0,
-          targetCurrencies,
-          {} // Empty results since we're just saving state
-        );
-
-        console.log(
-          "✅ MultiCurrencyConverter: Successfully saved state to database"
-        );
-        console.log(
-          "💾 MultiCurrencyConverter: Saved multi-currency converter state:",
-          {
-            amount,
-            fromCurrency,
-            targetCount: conversionTargets.length,
-            targets: conversionTargets.map((t) => t.currency),
-          }
-        );
-      } else {
-        // Non-authenticated user - save to AsyncStorage
-        console.log("👤 Non-authenticated user - saving to AsyncStorage");
-        const stateToSave = {
-          amount,
-          fromCurrency,
-          conversionTargets,
-          timestamp: Date.now(),
-          version: "1.0",
-        };
-
-        const serializedState = JSON.stringify(stateToSave);
-        console.log(
-          "💾 MultiCurrencyConverter: Attempting to save state:",
-          stateToSave
-        );
-
-        await AsyncStorage.setItem(STORAGE_KEY, serializedState);
-
-        console.log(
-          "✅ MultiCurrencyConverter: Successfully saved state to AsyncStorage"
-        );
-        console.log(
-          "💾 MultiCurrencyConverter: Saved multi-currency converter state:",
-          {
-            amount,
-            fromCurrency,
-            targetCount: conversionTargets.length,
-            targets: conversionTargets.map((t) => t.currency),
-          }
-        );
-      }
+      // Always save locally to avoid reloading every time user opens the modal.
+      const stateToSave = {
+        amount,
+        fromCurrency,
+        conversionTargets,
+        timestamp: Date.now(),
+        version: "1.0",
+      };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+      await AsyncStorage.setItem(STORAGE_TS_KEY, String(Date.now()));
     } catch (error) {
       console.error(
         "❌ MultiCurrencyConverter: Error saving multi-currency converter state:",
@@ -866,23 +758,8 @@ export default function MultiCurrencyConverter({
     hasLoadedData,
   ]);
 
-  // Refresh data when component becomes focused (for authenticated users)
-  useFocusEffect(
-    useCallback(() => {
-      if (user) {
-        console.log(
-          "🔄 MultiCurrencyConverter: Component focused, refreshing data from database..."
-        );
-        loadSavedState();
-      }
-    }, [user, loadSavedState])
-  );
-
-  // Refresh data when user authentication state changes
+  // Load saved state once (avoid refetch on every open).
   useEffect(() => {
-    console.log(
-      "🔄 MultiCurrencyConverter: User authentication state changed, refreshing data..."
-    );
     loadSavedState();
   }, [user, loadSavedState]);
 

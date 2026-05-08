@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/themed-text";
+import { hexToRgba } from "@/constants/theme";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import {
@@ -831,6 +832,12 @@ function SalaryView({
   const surfaceColor = useThemeColor({}, "surface");
   const [amountStr, setAmountStr] = useState("500000");
   const [knowGross, setKnowGross] = useState(false);
+
+  // #region agent log
+  // NOTE: device cannot reach 127.0.0.1 host logger; keep console evidence too.
+  console.log("[dbg 45dbaa][H1] SalaryView typeof hexToRgba =", typeof hexToRgba);
+  fetch('http://127.0.0.1:7338/ingest/0d9f3a3e-388a-412c-97f8-11d612315339',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45dbaa'},body:JSON.stringify({sessionId:'45dbaa',runId:'pre-fix',hypothesisId:'H1',location:'components/ArmeniaFinanceModal.tsx:SalaryView',message:'hexToRgba presence check',data:{typeofHexToRgba:typeof hexToRgba},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion agent log
 
   const result = useMemo(() => {
     const amt = parseNum(amountStr);

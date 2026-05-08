@@ -58,6 +58,10 @@ export function useSavedRates(): UseSavedRatesReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const SAVED_RATES_CACHE_KEY = "savedRates.cache.v1";
+  const SAVED_RATES_CACHE_TS_KEY = "savedRates.cache.ts.v1";
+  const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
   const refreshRates = useCallback(async () => {
     try {
       setLoading(true);
@@ -94,6 +98,12 @@ export function useSavedRates(): UseSavedRatesReturn {
         try {
           const dbRates = await UserDataService.getSavedRates();
           setSavedRates(dbRates);
+          try {
+            await storage.setItem(SAVED_RATES_CACHE_KEY, JSON.stringify(dbRates ?? []));
+            await storage.setItem(SAVED_RATES_CACHE_TS_KEY, String(Date.now()));
+          } catch {
+            // ignore cache write errors
+          }
         } catch (dbError) {
           // If database fails, show empty list (no fallback to local storage)
           console.warn('Database load failed for authenticated user:', dbError);
@@ -102,6 +112,12 @@ export function useSavedRates(): UseSavedRatesReturn {
       } else {
         // Non-authenticated user - use only local storage
         setSavedRates(localRates);
+        try {
+          await storage.setItem(SAVED_RATES_CACHE_KEY, JSON.stringify(localRates ?? []));
+          await storage.setItem(SAVED_RATES_CACHE_TS_KEY, String(Date.now()));
+        } catch {
+          // ignore cache write errors
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch saved rates');
@@ -137,6 +153,12 @@ export function useSavedRates(): UseSavedRatesReturn {
 
         const updatedRates = [newLocalRate, ...ratesArray].slice(0, 10); // Keep only 10 most recent
         await storage.setItem('savedRates', JSON.stringify(updatedRates));
+        try {
+          await storage.setItem(SAVED_RATES_CACHE_KEY, JSON.stringify(updatedRates ?? []));
+          await storage.setItem(SAVED_RATES_CACHE_TS_KEY, String(Date.now()));
+        } catch {
+          // ignore cache write errors
+        }
 
         // Update local state with formatted data
         const formattedRate = {
@@ -175,6 +197,12 @@ export function useSavedRates(): UseSavedRatesReturn {
           const ratesArray = JSON.parse(currentRates);
           const updatedRates = ratesArray.filter((rate: any) => rate.id !== id);
           await storage.setItem('savedRates', JSON.stringify(updatedRates));
+          try {
+            await storage.setItem(SAVED_RATES_CACHE_KEY, JSON.stringify(updatedRates ?? []));
+            await storage.setItem(SAVED_RATES_CACHE_TS_KEY, String(Date.now()));
+          } catch {
+            // ignore cache write errors
+          }
           setSavedRates(prev => prev.filter(rate => rate.id !== id));
           return true;
         }
@@ -200,6 +228,12 @@ export function useSavedRates(): UseSavedRatesReturn {
         // Non-authenticated user - clear local storage
         const storage = getAsyncStorage();
         await storage.setItem('savedRates', JSON.stringify([]));
+        try {
+          await storage.setItem(SAVED_RATES_CACHE_KEY, JSON.stringify([]));
+          await storage.setItem(SAVED_RATES_CACHE_TS_KEY, String(Date.now()));
+        } catch {
+          // ignore cache write errors
+        }
         setSavedRates([]);
         return true;
       }
@@ -210,7 +244,38 @@ export function useSavedRates(): UseSavedRatesReturn {
   }, [user]);
 
   useEffect(() => {
-    refreshRates();
+    let alive = true;
+    (async () => {
+      // Load cached rates first, then refresh only if stale.
+      try {
+        const storage = getAsyncStorage();
+        const [raw, tsRaw] = await Promise.all([
+          storage.getItem(SAVED_RATES_CACHE_KEY),
+          storage.getItem(SAVED_RATES_CACHE_TS_KEY),
+        ]);
+        if (!alive) return;
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              setSavedRates(parsed);
+              setLoading(false);
+            }
+          } catch {
+            // ignore parse errors
+          }
+        }
+
+        const ts = tsRaw ? Number(tsRaw) : 0;
+        const stale = !ts || !Number.isFinite(ts) || Date.now() - ts > CACHE_TTL_MS;
+        if (stale) void refreshRates();
+      } catch {
+        void refreshRates();
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, [refreshRates]);
 
   return {
@@ -231,6 +296,10 @@ export function useRateAlerts(): UseRateAlertsReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const ALERTS_CACHE_KEY = "rateAlerts.cache.v1";
+  const ALERTS_CACHE_TS_KEY = "rateAlerts.cache.ts.v1";
+  const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
   const refreshAlerts = useCallback(async () => {
     if (!user) {
       setRateAlerts([]);
@@ -243,6 +312,13 @@ export function useRateAlerts(): UseRateAlertsReturn {
       setError(null);
       const alerts = await UserDataService.getRateAlerts();
       setRateAlerts(alerts);
+      try {
+        const storage = getAsyncStorage();
+        await storage.setItem(ALERTS_CACHE_KEY, JSON.stringify(alerts ?? []));
+        await storage.setItem(ALERTS_CACHE_TS_KEY, String(Date.now()));
+      } catch {
+        // ignore cache write errors
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch rate alerts');
     } finally {
@@ -306,7 +382,45 @@ export function useRateAlerts(): UseRateAlertsReturn {
   }, [user]);
 
   useEffect(() => {
-    refreshAlerts();
+    let alive = true;
+    (async () => {
+      // Load cached alerts first so opening the modal doesn't always fetch.
+      try {
+        const storage = getAsyncStorage();
+        const [raw, tsRaw] = await Promise.all([
+          storage.getItem(ALERTS_CACHE_KEY),
+          storage.getItem(ALERTS_CACHE_TS_KEY),
+        ]);
+        if (!alive) return;
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              setRateAlerts(parsed);
+              setLoading(false);
+            }
+          } catch {
+            // ignore parse errors
+          }
+        }
+
+        const ts = tsRaw ? Number(tsRaw) : 0;
+        const stale = !ts || !Number.isFinite(ts) || Date.now() - ts > CACHE_TTL_MS;
+        // Only auto-refresh if cache is stale (avoid refetch on every open).
+        if (user && stale) {
+          void refreshAlerts();
+        } else if (!user) {
+          setLoading(false);
+        }
+      } catch {
+        // If cache read fails, fall back to one refresh for signed-in users.
+        if (user) void refreshAlerts();
+        else setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, [refreshAlerts]);
 
   return {
