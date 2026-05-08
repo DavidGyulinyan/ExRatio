@@ -313,7 +313,7 @@ class NotificationService {
 
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: rateAlertNotificationContent(prefs, {
-          title: '💰 ExRatio Alert',
+          title: '💰 Capital Alert',
           body: `Monitoring ${alert.fromCurrency} to ${alert.toCurrency}`,
           data: {
             type: 'rate_check',

@@ -1,8 +1,8 @@
-# ExRatio - Real-time Currency Converter 📱
+# Capital - Real-time Currency Converter 📱
 
 A modern, user-friendly mobile currency converter app built with React Native and Expo. Get real-time exchange rates for 160+ currencies with a clean, intuitive interface.
 
-![ExRatio Preview](https://via.placeholder.com/300x600/2563eb/ffffff?text=ExRatio+App)
+![Capital Preview](https://via.placeholder.com/300x600/2563eb/ffffff?text=Capital+App)
 
 ## ✨ Features
 
@@ -30,8 +30,8 @@ A modern, user-friendly mobile currency converter app built with React Native an
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/exratio-mobile.git
-   cd exratio-mobile
+   git clone https://github.com/yourusername/capital-mobile.git
+   cd capital-mobile
    ```
 
 2. **Install dependencies**
@@ -91,7 +91,7 @@ A modern, user-friendly mobile currency converter app built with React Native an
 ## 🏗️ Project Structure
 
 ```
-exratio-mobile/
+capital-mobile/
 ├── app/                    # App screens (file-based routing)
 │   ├── _layout.tsx        # Root layout
 │   ├── modal.tsx          # Modal screens
@@ -158,7 +158,7 @@ This app uses the [ExchangeRate-API](https://www.exchangerate-api.com/) for curr
 
 The app supports multiple exchange rate providers:
 - **ExchangeRate-API** (Primary)
-- **ExRatio Provider** (Fallback)
+- **Fallback Provider** (Fallback)
 
 Providers can be configured in the settings and will automatically switch if the primary provider is unavailable.
 

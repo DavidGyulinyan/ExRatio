@@ -17,7 +17,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const translations = {
   en: {
-    'app.title': 'Finhub',
+    'app.title': 'Capital',
     'app.subtitle': 'Live rates & smart conversion',
     // App & Navigation    // Dashboard
     'dashboard.title': 'Dashboard',
@@ -341,7 +341,7 @@ const translations = {
     'time.nextUpdate': 'Next update',
 
     // Onboarding Guide
-    'onboarding.welcome': 'Welcome to Fin hub!',
+    'onboarding.welcome': 'Welcome to Capital!',
     'onboarding.welcomeDesc': 'Your professional currency converter with real-time rates and advanced features.',
     'onboarding.convert': 'Convert Currencies Instantly',
     'onboarding.convertDesc': 'Use the main converter to quickly convert between any currencies with live exchange rates.',
@@ -414,7 +414,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'Create Account',
-    'signup.subtitle': 'Join Fin hub to sync your data',
+    'signup.subtitle': 'Join Capital to sync your data',
     'signup.usernameOptional': 'Username (Optional)',
     'signup.chooseUsername': 'Choose a username',
     'signup.preferredLanguage': 'Preferred Language',
@@ -458,7 +458,7 @@ const translations = {
     ...AM_FREELANCE_EN,
   },
   hy: {
-    'app.title': 'Finhub',
+    'app.title': 'Capital',
     'app.subtitle': 'Արժույթի գործիքներ',
     // Armenian    
     'dashboard.title': 'Վահանակ',
@@ -788,7 +788,7 @@ const translations = {
     'time.nextUpdate': 'Հաջորդ',
 
     // Onboarding Guide
-    'onboarding.welcome': 'Բարի գալուստ Fin hub!',
+    'onboarding.welcome': 'Բարի գալուստ Capital!',
     'onboarding.welcomeDesc': 'Թարմ ու ճշգրիտ փոխարժեքներ՝ լիարժեք գործիքներով և առաջադեմ հնարավորություններով։',
     'onboarding.convert': 'Արժույթները փոխանակեք անմիջապես',
     'onboarding.convertDesc': 'Հիմնական փոխանակումը թույլ է տալիս ակնթարթորեն իմանալ ներկայիս փոխարժեքներն ու կատարել արժույթների փոխարկում։',
@@ -856,7 +856,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'Ստեղծել հաշիվ',
-    'signup.subtitle': 'Միացեք Fin hub-ին՝ ձեր տվյալները համաժամանակեցնելու համար',
+    'signup.subtitle': 'Միացեք Capital-ին՝ ձեր տվյալները համաժամանակեցնելու համար',
     'signup.usernameOptional': 'Օգտանուն (ըստ ցանկության)',
     'signup.chooseUsername': 'Ընտրեք օգտանուն',
     'signup.preferredLanguage': 'Նախընտրած լեզու',
@@ -876,7 +876,7 @@ const translations = {
     ...AM_FREELANCE_HY,
   },
   ru: {
-    'app.title': 'Finhub',
+    'app.title': 'Capital',
     'app.subtitle': 'Курсы и конвертация',
     // Russian    
     'dashboard.title': 'Панель',
@@ -1086,7 +1086,7 @@ const translations = {
     'time.nextUpdate': 'Следующее',
 
     // Onboarding Guide
-    'onboarding.welcome': 'Добро пожаловать в Fin hub!',
+    'onboarding.welcome': 'Добро пожаловать в Capital!',
     'onboarding.welcomeDesc': 'Ваш профессиональный конвертер валют с курсами в реальном времени и расширенными функциями.',
     'onboarding.convert': 'Конвертируйте валюты мгновенно',
     'onboarding.convertDesc': 'Используйте основной конвертер для быстрого конвертирования между любыми валютами с курсами в реальном времени.',
@@ -1178,7 +1178,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'Создать аккаунт',
-    'signup.subtitle': 'Присоединяйтесь к Fin hub для синхронизации данных',
+    'signup.subtitle': 'Присоединяйтесь к Capital для синхронизации данных',
     'signup.usernameOptional': 'Имя пользователя (необязательно)',
     'signup.chooseUsername': 'Выберите имя пользователя',
     'signup.preferredLanguage': 'Предпочитаемый язык',
@@ -1249,7 +1249,7 @@ const translations = {
     ...AM_FREELANCE_EN,
   },
   es: {
-    'app.title': 'Finhub',
+    'app.title': 'Capital',
     'app.subtitle': 'Tipos y conversión',
     // Spanish    
     'dashboard.title': 'Panel',
@@ -1459,7 +1459,7 @@ const translations = {
     'time.nextUpdate': 'Próxima',
 
     // Onboarding Guide
-    'onboarding.welcome': '¡Bienvenido a Fin hub!',
+    'onboarding.welcome': '¡Bienvenido a Capital!',
     'onboarding.welcomeDesc': 'Tu convertidor de moneda profesional con tasas en tiempo real y funciones avanzadas.',
     'onboarding.convert': 'Convierte Monedas Instantáneamente',
     'onboarding.convertDesc': 'Usa el convertidor principal para convertir rápidamente entre cualquier moneda con tasas de cambio en vivo.',
@@ -1534,7 +1534,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'Crear Cuenta',
-    'signup.subtitle': 'Únete a Fin hub para sincronizar tus datos',
+    'signup.subtitle': 'Únete a Capital para sincronizar tus datos',
     'signup.usernameOptional': 'Nombre de usuario (Opcional)',
     'signup.chooseUsername': 'Elige un nombre de usuario',
     'signup.preferredLanguage': 'Idioma preferido',
@@ -1622,7 +1622,7 @@ const translations = {
     ...AM_FREELANCE_EN,
   },
   zh: {
-    'app.title': 'Finhub',
+    'app.title': 'Capital',
     'app.subtitle': '汇率与换算',
     // Chinese (Simplified)    
     'dashboard.title': '仪表板',
@@ -1830,7 +1830,7 @@ const translations = {
     'time.nextUpdate': '下次更新',
 
     // Onboarding Guide
-    'onboarding.welcome': '欢迎来到Fin hub！',
+    'onboarding.welcome': '欢迎来到 Capital！',
     'onboarding.welcomeDesc': '您的专业货币转换器，具有实时汇率和高级功能。',
     'onboarding.convert': '即时转换货币',
     'onboarding.convertDesc': '使用主转换器快速转换任何货币之间的汇率，使用实时汇率。',
@@ -1905,7 +1905,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': '创建账户',
-    'signup.subtitle': '加入Fin hub以同步您的数据',
+    'signup.subtitle': '加入 Capital 以同步您的数据',
     'signup.usernameOptional': '用户名（可选）',
     'signup.chooseUsername': '选择用户名',
     'signup.preferredLanguage': '首选语言',
@@ -1993,7 +1993,7 @@ const translations = {
     ...AM_FREELANCE_EN,
   },
   hi: {
-    'app.title': 'Finhub',
+    'app.title': 'Capital',
     'app.subtitle': 'दरें और रूपांतरण',
     // Hindi    
     'dashboard.title': 'डैशबोर्ड',
@@ -2202,7 +2202,7 @@ const translations = {
     'time.nextUpdate': 'अगला अपडेट',
 
     // Onboarding Guide
-    'onboarding.welcome': 'Fin hub में आपका स्वागत है!',
+    'onboarding.welcome': 'Capital में आपका स्वागत है!',
     'onboarding.welcomeDesc': 'रियल-टाइम दरों और उन्नत सुविधाओं के साथ आपका पेशेवर मुद्रा कन्वर्टर।',
     'onboarding.convert': 'मुद्राएं तुरंत बदलें',
     'onboarding.convertDesc': 'लाइव एक्सचेंज दरों के साथ किसी भी मुद्राओं के बीच तेजी से बदलने के लिए मुख्य कन्वर्टर का उपयोग करें।',
@@ -2277,7 +2277,7 @@ const translations = {
 
     // Sign Up Page
     'signup.createAccount': 'खाता बनाएं',
-    'signup.subtitle': 'अपना डेटा सिंक करने के लिए Fin hub से जुड़ें',
+    'signup.subtitle': 'अपना डेटा सिंक करने के लिए Capital से जुड़ें',
     'signup.usernameOptional': 'यूजरनेम (वैकल्पिक)',
     'signup.chooseUsername': 'यूजरनेम चुनें',
     'signup.preferredLanguage': 'पसंदीदा भाषा',

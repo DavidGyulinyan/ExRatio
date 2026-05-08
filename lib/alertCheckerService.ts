@@ -1,7 +1,13 @@
 import { UserDataService, RateAlert } from './userDataService';
 import notificationService from './notificationService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAsyncStorage } from './storage';
+
+const RATE_ALERT_DEBUG_LOGS = false;
+function debugLog(...args: any[]) {
+  if (!RATE_ALERT_DEBUG_LOGS) return;
+  // eslint-disable-next-line no-console
+  console.log(...args);
+}
 
 class AlertCheckerService {
   private static instance: AlertCheckerService;
@@ -17,11 +23,11 @@ class AlertCheckerService {
 
   async startChecking(intervalMinutes: number = 60): Promise<void> {
     if (this.checkInterval) {
-      console.log('🔔 Alert checker already running');
+      debugLog('🔔 Alert checker already running');
       return;
     }
 
-    console.log(`🔔 Starting alert checker with ${intervalMinutes} minute intervals`);
+    debugLog(`🔔 Starting alert checker with ${intervalMinutes} minute intervals`);
 
     // Check immediately on start
     await this.checkAlerts();
@@ -36,31 +42,31 @@ class AlertCheckerService {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
-      console.log('🔔 Alert checker stopped');
+      debugLog('🔔 Alert checker stopped');
     }
   }
 
   private async checkAlerts(): Promise<void> {
     if (this.isChecking) {
-      console.log('🔔 Alert check already in progress, skipping');
+      debugLog('🔔 Alert check already in progress, skipping');
       return;
     }
 
     this.isChecking = true;
 
     try {
-      console.log('🔔 Checking rate alerts...');
+      debugLog('🔔 Checking rate alerts...');
 
       // Get all active alerts that haven't been notified yet
       const alerts = await UserDataService.getRateAlerts();
       const activeAlerts = alerts.filter(alert => alert.is_active && !alert.notified);
 
       if (activeAlerts.length === 0) {
-        console.log('🔔 No active alerts to check');
+        debugLog('🔔 No active alerts to check');
         return;
       }
 
-      console.log(`🔔 Checking ${activeAlerts.length} active alerts`);
+      debugLog(`🔔 Checking ${activeAlerts.length} active alerts`);
 
       // Get current exchange rates
       const cachedRates = await this.getCurrentRates();
@@ -83,21 +89,23 @@ class AlertCheckerService {
   private async checkSingleAlert(alert: RateAlert, cachedRates: any): Promise<void> {
     // Double-check that alert hasn't been notified already (extra safeguard)
     if (alert.notified) {
-      console.log(`⚠️ Alert ${alert.id} already notified, skipping`);
+      debugLog(`⚠️ Alert ${alert.id} already notified, skipping`);
       return;
     }
 
     const currentRate = this.getRateForAlert(alert, cachedRates);
 
     if (currentRate === null) {
-      console.log(`⚠️ No rate data available for ${alert.from_currency}/${alert.to_currency}`);
+      debugLog(`⚠️ No rate data available for ${alert.from_currency}/${alert.to_currency}`);
       return;
     }
 
     const isTriggered = this.evaluateAlertTrigger(alert, currentRate);
 
     if (isTriggered) {
-      console.log(`🚨 Alert triggered: ${alert.from_currency} → ${alert.to_currency} (${currentRate.toFixed(4)} ${alert.condition} ${alert.target_rate})`);
+      debugLog(
+        `🚨 Alert triggered: ${alert.from_currency} → ${alert.to_currency} (${currentRate.toFixed(4)} ${alert.condition} ${alert.target_rate})`
+      );
 
       // Send notification
       await this.sendAlertNotification(alert, currentRate);
@@ -113,7 +121,7 @@ class AlertCheckerService {
             is_active: false
           });
           if (success) {
-            console.log(`✅ Alert ${alert.id} marked as notified and deactivated (attempt ${retryCount + 1})`);
+            debugLog(`✅ Alert ${alert.id} marked as notified and deactivated (attempt ${retryCount + 1})`);
             break;
           } else {
             console.error(`❌ Failed to mark alert ${alert.id} as notified and deactivated (attempt ${retryCount + 1})`);
@@ -210,17 +218,17 @@ class AlertCheckerService {
   // Debug method to check a specific alert
   async debugAlert(alertId: string): Promise<void> {
     try {
-      console.log(`🔍 Debugging alert: ${alertId}`);
+      debugLog(`🔍 Debugging alert: ${alertId}`);
 
       const alerts = await UserDataService.getRateAlerts();
       const alert = alerts.find(a => a.id === alertId);
 
       if (!alert) {
-        console.log(`❌ Alert ${alertId} not found`);
+        debugLog(`❌ Alert ${alertId} not found`);
         return;
       }
 
-      console.log(`📋 Alert details:`, {
+      debugLog(`📋 Alert details:`, {
         id: alert.id,
         from_currency: alert.from_currency,
         to_currency: alert.to_currency,
@@ -232,37 +240,37 @@ class AlertCheckerService {
 
       // Check if alert should be processed
       if (!alert.is_active) {
-        console.log(`⚠️ Alert is not active`);
+        debugLog(`⚠️ Alert is not active`);
         return;
       }
 
       if (alert.notified) {
-        console.log(`⚠️ Alert has already been notified`);
+        debugLog(`⚠️ Alert has already been notified`);
         return;
       }
 
       // Get current rates
       const cachedRates = await this.getCurrentRates();
       if (!cachedRates) {
-        console.log(`❌ No cached rates available`);
+        debugLog(`❌ No cached rates available`);
         return;
       }
 
       const currentRate = this.getRateForAlert(alert, cachedRates);
-      console.log(`💱 Current rate for ${alert.from_currency}/${alert.to_currency}: ${currentRate}`);
+      debugLog(`💱 Current rate for ${alert.from_currency}/${alert.to_currency}: ${currentRate}`);
 
       if (currentRate === null) {
-        console.log(`❌ Could not calculate rate for ${alert.from_currency}/${alert.to_currency}`);
+        debugLog(`❌ Could not calculate rate for ${alert.from_currency}/${alert.to_currency}`);
         return;
       }
 
       const isTriggered = this.evaluateAlertTrigger(alert, currentRate);
-      console.log(`🎯 Alert evaluation: ${currentRate.toFixed(4)} ${alert.condition} ${alert.target_rate} = ${isTriggered}`);
+      debugLog(`🎯 Alert evaluation: ${currentRate.toFixed(4)} ${alert.condition} ${alert.target_rate} = ${isTriggered}`);
 
       if (isTriggered) {
-        console.log(`🚨 Alert should trigger!`);
+        debugLog(`🚨 Alert should trigger!`);
       } else {
-        console.log(`✅ Alert condition not met yet`);
+        debugLog(`✅ Alert condition not met yet`);
       }
 
     } catch (error) {

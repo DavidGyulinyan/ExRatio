@@ -307,30 +307,6 @@ export default function RateAlertManager({
     setShowAlertModal(true);
   };
 
-  const handleDebugAlerts = async () => {
-    try {
-      console.log('🔍 Manual alert check triggered');
-
-      // Get all alerts for debugging
-      const allAlerts = await alertCheckerService.getAllAlertsForDebug();
-      console.log(`📋 Total alerts in database: ${allAlerts.length}`);
-
-      // Check each alert
-      for (const alert of allAlerts) {
-        console.log(`🔍 Checking alert: ${alert.id} (${alert.from_currency}→${alert.to_currency})`);
-        await alertCheckerService.debugAlert(alert.id);
-      }
-
-      // Also trigger a full check
-      await alertCheckerService.checkAlertsNow();
-
-      Alert.alert('Debug Complete', 'Check console logs for alert debugging information');
-    } catch (error) {
-      console.error('❌ Error in debug:', error);
-      Alert.alert('Debug Error', 'Failed to debug alerts. Check console for details.');
-    }
-  };
-
   // Show loading state
   if (loading) {
     return (
@@ -404,15 +380,6 @@ export default function RateAlertManager({
           </ThemedText>
           <View style={styles.headerActions}>
             <TouchableOpacity
-              style={[{ backgroundColor: primaryColor, shadowColor: primaryColor }, styles.debugButton]}
-              onPress={handleDebugAlerts}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="search-outline" size={16} color={textInverseColor} />
-                <ThemedText style={[{ color: textInverseColor }, styles.debugButtonText]}>Debug</ThemedText>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
               style={[{ backgroundColor: successColor, shadowColor: successColor }, styles.createButton]}
               onPress={handleCreateAlert}
             >
@@ -430,15 +397,6 @@ export default function RateAlertManager({
       {/* Show Create button inside modal content when inModal is true */}
       {inModal && (
         <View style={styles.modalCreateButtonContainer}>
-          <TouchableOpacity
-            style={[{ backgroundColor: primaryColor, shadowColor: primaryColor }, styles.debugButton]}
-            onPress={handleDebugAlerts}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="search-outline" size={16} color={textInverseColor} />
-              <ThemedText style={[{ color: textInverseColor }, styles.debugButtonText]}>Debug</ThemedText>
-            </View>
-          </TouchableOpacity>
           <TouchableOpacity
             style={[{ backgroundColor: successColor, shadowColor: successColor }, styles.createButton]}
             onPress={handleCreateAlert}

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Finhub",
+    "name": "Capital",
     "slug": "ratesnap-mobile",
     "owner": "davidgyulinyan",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app-icon.png",
     "scheme": "exratio-mobile",
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
@@ -20,8 +20,8 @@
             "CFBundleURLSchemes": ["exratio-mobile"]
           }
         ],
-        "NSUserNotificationsUsageDescription": "Finhub needs notification access to send you alerts when your saved exchange rates reach your target values.",
-        "NSLocationWhenInUseUsageDescription": "Finhub needs location access to detect your local currency for better user experience.",
+        "NSUserNotificationsUsageDescription": "Capital needs notification access to send you alerts when your saved exchange rates reach your target values.",
+        "NSLocationWhenInUseUsageDescription": "Capital needs location access to detect your local currency for better user experience.",
         "UNUserNotificationCenterDelegate": true
       }
     },
@@ -29,7 +29,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "foregroundImage": "./assets/images/app-android-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "intentFilters": [
@@ -56,7 +56,7 @@
 
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/app-favicon.png"
     },
 
     "plugins": [
@@ -66,7 +66,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/app-splash.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#FAF6F2"
@@ -89,7 +89,7 @@
     },
 
     "notifications": {
-      "icon": "./assets/images/notification-icon.png",
+      "icon": "./assets/images/app-notification-icon.png",
       "color": "#F07E25",
       "iosDisplayInForeground": true
     },

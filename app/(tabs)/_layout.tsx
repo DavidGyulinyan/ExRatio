@@ -21,7 +21,7 @@ export default function TabLayout() {
           <Stack.Screen
             name="index"
             options={{
-              title: "ExRatio Dashboard",
+              title: "Capital",
             }}
           />
         </Stack>

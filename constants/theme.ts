@@ -1,15 +1,16 @@
 /**
  * Design tokens: colors, radii, and spacing for a consistent UI.
- * Brand: orange (#F07E25), highlight (#FFB366), warm canvas (#FAF6F2), error (#E04D4D).
+ * Brand: green (#85BB65) with matching palette, error (#E04D4D).
  */
 
 import { Platform } from "react-native";
 
-const brand = "#F07E25";
-const brandLight = "#FFB366";
-const canvas = "#FAF6F2";
+// Brand palette (base requested by user): #677C68
+const brand = "#677C68";
+const brandLight = "#8FA190";
+const canvas = "#F3F6F3";
 const coral = "#E04D4D";
-const brandPressed = "#C86418";
+const brandPressed = "#4E6050";
 
 /** Shared layout tokens — use for padding, gaps, and corner radius. */
 export const Layout = {
@@ -81,9 +82,9 @@ export const Colors = {
 
     tabIconDefault: "#8e8e93",
     tabIconSelected: brand,
-    tabBackground: "#f2ebe4",
+    tabBackground: "#E9EEE9",
 
-    headerBackground: "#f5efe8",
+    headerBackground: "#EEF1EE",
     headerBorder: "#ebe4dc",
 
     online: brand,
@@ -96,16 +97,16 @@ export const Colors = {
     secondary: brand,
     colorAccent: brandLight,
 
-    background: "#141210",
-    surface: "#1f1a16",
-    surfaceSecondary: "#2a241e",
-    cardBackground: "#1f1a16",
+    background: "#0F1511",
+    surface: "#161E18",
+    surfaceSecondary: "#1F2A23",
+    cardBackground: "#161E18",
     modalBackground: "rgba(0, 0, 0, 0.72)",
 
     text: "#f2f2f7",
     textSecondary: "#aeaeb2",
     textTertiary: "#8e8e93",
-    textInverse: "#141210",
+    textInverse: "#0F1511",
 
     tint: brandLight,
     accent: brandLight,
@@ -113,9 +114,9 @@ export const Colors = {
     warning: "#d4a574",
     error: coral,
 
-    border: "#3d352c",
-    borderLight: "#4a4036",
-    divider: "#3d352c",
+    border: "#2C3A31",
+    borderLight: "#34463A",
+    divider: "#2C3A31",
 
     icon: "#aeaeb2",
     iconSecondary: "#8e8e93",
@@ -123,10 +124,10 @@ export const Colors = {
 
     tabIconDefault: "#8e8e93",
     tabIconSelected: brandLight,
-    tabBackground: "#2a241e",
+    tabBackground: "#1F2A23",
 
-    headerBackground: "#2a241e",
-    headerBorder: "#3d352c",
+    headerBackground: "#1F2A23",
+    headerBorder: "#2C3A31",
 
     online: brandLight,
     offline: "#8e8e93",
