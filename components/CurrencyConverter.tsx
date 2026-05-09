@@ -32,6 +32,11 @@ import {
   fiatKeysFromConversionRates,
   isFiatCurrencyCode,
 } from "@/constants/fiatCurrencyCodes";
+import {
+  canonicalDecimalToDisplay,
+  displayDecimalToCanonical,
+  formatGroupedNumber,
+} from "@/lib/numberFormat";
 
 interface AlertSettings {
   targetRate: number;
@@ -81,7 +86,7 @@ export default function CurrencyConverter({
   onShareableMessageChange,
 }: CurrencyConverterProps) {
   const { t, tWithParams } = useLanguage();
-  const [amount, setAmount] = useState<string>("1");
+  const [amount, setAmount] = useState<string>("");
   const [convertedAmount, setConvertedAmount] = useState<string>("");
   const [currenciesData, setCurrenciesData] = useState<Data | null>(null);
   const [fromCurrency, setFromCurrency] = useState<string>("USD");
@@ -838,7 +843,10 @@ export default function CurrencyConverter({
         const hoursSinceLastUse =
           (Date.now() - lastConversion.timestamp) / (1000 * 60 * 60);
         if (hoursSinceLastUse < 24) {
-          if (lastConversion.amount) setAmount(lastConversion.amount);
+          if (lastConversion.amount != null && lastConversion.amount !== "") {
+            const n = Number(lastConversion.amount);
+            if (Number.isFinite(n) && n !== 0) setAmount(String(lastConversion.amount));
+          }
           if (
             lastConversion.fromCurrency &&
             currencyList.includes(lastConversion.fromCurrency)
@@ -964,8 +972,8 @@ export default function CurrencyConverter({
       onShareableMessageChange(null);
       return;
     }
-    const line1 = `${inputAmount.toLocaleString()} ${fromCurrency} → ${parseFloat(convertedAmount).toLocaleString()} ${toCurrency}`;
-    const line2 = `${t("converter.exchangeRate")}: 1 ${fromCurrency} = ${rate.toFixed(4)} ${toCurrency}`;
+    const line1 = `${formatGroupedNumber(inputAmount, 6)} ${fromCurrency} → ${formatGroupedNumber(parseFloat(convertedAmount), 6)} ${toCurrency}`;
+    const line2 = `${t("converter.exchangeRate")}: 1 ${fromCurrency} = ${formatGroupedNumber(rate, 4)} ${toCurrency}`;
     onShareableMessageChange([t("converter.title"), line1, line2].join("\n"));
   }, [
     inModal,
@@ -1205,9 +1213,9 @@ export default function CurrencyConverter({
               },
               styles.amountInput,
             ]}
-            placeholder={t("converter.enterAmountPlaceholder")}
-            value={amount}
-            onChangeText={setAmount}
+            placeholder="0"
+            value={canonicalDecimalToDisplay(amount)}
+            onChangeText={(t) => setAmount(displayDecimalToCanonical(t))}
             keyboardType="numeric"
             placeholderTextColor={textSecondaryColor}
           />
@@ -1327,13 +1335,13 @@ export default function CurrencyConverter({
                       { color: textSecondaryColor },
                     ]}
                   >
-                    {parseFloat(amount).toLocaleString()} {fromCurrency} →{" "}
+                    {formatGroupedNumber(parseFloat(amount), 6)} {fromCurrency} →{" "}
                     {toCurrency}
                   </ThemedText>
                   <ThemedText
                     style={[{ color: primaryColor }, styles.outputAmount]}
                   >
-                    {parseFloat(convertedAmount).toLocaleString()} {toCurrency}
+                    {formatGroupedNumber(parseFloat(convertedAmount), 6)} {toCurrency}
                   </ThemedText>
                 </View>
                 <View style={styles.ratePillRow}>
@@ -1357,7 +1365,7 @@ export default function CurrencyConverter({
                       {tWithParams("converter.exchangeRateResult", {
                         rateLabel: t("converter.exchangeRate"),
                         fromCurrency,
-                        rate: getExchangeRate().toFixed(4),
+                        rate: formatGroupedNumber(getExchangeRate(), 4),
                         toCurrency,
                       })}
                     </ThemedText>

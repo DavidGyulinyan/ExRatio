@@ -1,10 +1,10 @@
-/** Armenian freelancer / small-business tax & invoice helpers — merged into LanguageContext per locale. */
+/** Armenian freelancer / small-business tax helpers — merged into LanguageContext per locale. */
 export const AM_FREELANCE_EN: Record<string, string> = {
   "amFreelance.sectionTitle": "RA: Freelance & Taxes",
   "amFreelance.disclaimer":
     "Estimates only. Rules and eligibility vary — confirm with legislation or a tax advisor.",
   "amFreelance.back": "Back",
-  "amFreelance.menu.subtitle": "Taxes, VAT, invoices, reminders",
+  "amFreelance.menu.subtitle": "Taxes and VAT calculators",
 
   "amFreelance.card.soleProp": "Sole proprietor (ԱՁ) tax",
   "amFreelance.card.soleProp.desc": "Monthly + yearly estimate",
@@ -105,6 +105,7 @@ export const AM_FREELANCE_EN: Record<string, string> = {
   "amFreelance.reminders.notificationTitle": "Finance reminder",
   "amFreelance.reminders.notificationBody":
     "Review invoices, taxes, and cashflow for this month.",
+  "amFreelance.clearAllFields": "Clear all fields",
 };
 
 export const AM_FREELANCE_HY: Record<string, string> = {
@@ -112,7 +113,7 @@ export const AM_FREELANCE_HY: Record<string, string> = {
   "amFreelance.disclaimer":
     "Միայն մոտավոր գնահատական։ Ռեժիմները/կանոնները տարբեր են — ստուգեք օրենքով կամ հարկային խորհրդատուով։",
   "amFreelance.back": "Հետ",
-  "amFreelance.menu.subtitle": "Հարկեր, ԱԱՀ, հաշիվ-ապրանքագիր, հիշեցումներ",
+  "amFreelance.menu.subtitle": "Հարկեր և ԱԱՀ",
 
   "amFreelance.card.soleProp": "ԱՁ հարկ",
   "amFreelance.card.soleProp.desc": "Ամսական + տարեկան հաշվարկ",
@@ -213,5 +214,6 @@ export const AM_FREELANCE_HY: Record<string, string> = {
   "amFreelance.reminders.notificationTitle": "Ֆինանսների հիշեցում",
   "amFreelance.reminders.notificationBody":
     "Ստուգեք ինվոյսները, հարկերը և այս ամսվա կանխիկ հոսքերը։",
+  "amFreelance.clearAllFields": "Մաքրել բոլորը",
 };
 

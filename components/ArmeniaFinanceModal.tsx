@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   LayoutAnimation,
   Platform,
@@ -23,7 +30,21 @@ import {
   estimateGrossFromNet,
   payrollBreakdownFromGross,
 } from "@/lib/armenia";
+import {
+  defaultAmFinanceDraft,
+  loadAmFinanceDraft,
+  saveAmFinanceDraft,
+  type AmFinanceFormsDraft,
+} from "@/lib/amScreensDraft";
 import { shareLines } from "@/lib/shareText";
+import {
+  addThousandsDotsFromDigitString,
+  canonicalDecimalToDisplay,
+  displayDecimalToCanonical,
+  formatAmdSuffix,
+  parseGroupedNumericInput,
+  sanitizeIntegerDigits,
+} from "@/lib/numberFormat";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -31,19 +52,25 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 
 export type FinanceScreen = "menu" | "paidLeave" | "maternity" | "salary" | "deposit";
 
+const AmFinanceDraftContext = createContext<{
+  draft: AmFinanceFormsDraft;
+  setDraft: React.Dispatch<React.SetStateAction<AmFinanceFormsDraft>>;
+} | null>(null);
+
+function useAmFinanceDraft() {
+  const ctx = useContext(AmFinanceDraftContext);
+  if (!ctx) {
+    throw new Error("useAmFinanceDraft must be used within provider");
+  }
+  return ctx;
+}
+
 function formatAmd(value: number): string {
-  if (!Number.isFinite(value)) return "—";
-  return (
-    new Intl.NumberFormat("hy-AM", { maximumFractionDigits: 0 }).format(Math.round(value)) +
-    " ֏"
-  );
+  return formatAmdSuffix(value);
 }
 
 function parseNum(raw: string): number | null {
-  const s = raw.replace(/\s/g, "").replace(",", ".").trim();
-  if (s === "") return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  return parseGroupedNumericInput(raw);
 }
 
 type ArmeniaFinanceModalProps = {
@@ -64,99 +91,138 @@ export default function ArmeniaFinanceModal({
   const textSecondaryColor = useThemeColor({}, "textSecondary");
   const borderColor = useThemeColor({}, "border");
 
-  const [screen, setScreen] = useState<FinanceScreen>(initialScreen);
+  const [stack, setStack] = useState<FinanceScreen[]>(() =>
+    initialScreen === "menu" ? ["menu"] : ["menu", initialScreen]
+  );
+  const [draft, setDraft] = useState<AmFinanceFormsDraft>(defaultAmFinanceDraft);
+  const [draftHydrated, setDraftHydrated] = useState(false);
 
   useEffect(() => {
-    setScreen(initialScreen);
+    setStack(initialScreen === "menu" ? ["menu"] : ["menu", initialScreen]);
   }, [initialScreen]);
 
-  const go = useCallback((s: FinanceScreen) => {
+  useEffect(() => {
+    let cancelled = false;
+    void loadAmFinanceDraft().then((d) => {
+      if (!cancelled) {
+        setDraft(d);
+        setDraftHydrated(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    const tm = setTimeout(() => void saveAmFinanceDraft(draft), 400);
+    return () => clearTimeout(tm);
+  }, [draft, draftHydrated]);
+
+  const screen = stack[stack.length - 1];
+
+  const pushScreen = useCallback((s: FinanceScreen) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setScreen(s);
+    if (s === "menu") {
+      setStack(["menu"]);
+      return;
+    }
+    setStack((prev) => {
+      if (prev[prev.length - 1] === s) return prev;
+      return [...prev, s];
+    });
+  }, []);
+
+  const popScreen = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }, []);
 
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={styles.scrollPad}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      {screen !== "menu" ? (
-        <TouchableOpacity
-          onPress={() => go("menu")}
-          style={[styles.backRow, { borderColor }]}
-          accessibilityRole="button"
-        >
-          <Ionicons name="chevron-back" size={22} color={primaryColor} />
-          <ThemedText type="defaultSemiBold" style={{ color: primaryColor }}>
-            {t("amFinance.back")}
-          </ThemedText>
-        </TouchableOpacity>
-      ) : null}
+    <AmFinanceDraftContext.Provider value={{ draft, setDraft }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.scrollPad}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {screen !== "menu" ? (
+          <TouchableOpacity
+            onPress={popScreen}
+            style={[styles.backRow, { borderColor }]}
+            accessibilityRole="button"
+          >
+            <Ionicons name="chevron-back" size={22} color={primaryColor} />
+            <ThemedText type="defaultSemiBold" style={{ color: primaryColor }}>
+              {t("amFinance.back")}
+            </ThemedText>
+          </TouchableOpacity>
+        ) : null}
 
-      {screen === "menu" ? (
-        <MenuView
-          t={t}
-          primaryColor={primaryColor}
-          surfaceColor={surfaceColor}
-          surfaceSecondaryColor={surfaceSecondaryColor}
-          textColor={textColor}
-          textSecondaryColor={textSecondaryColor}
-          borderColor={borderColor}
-          go={go}
-          onShareableMessageChange={onShareableMessageChange}
-        />
-      ) : null}
-      {screen === "paidLeave" ? (
-        <PaidLeaveView
-          t={t}
-          primaryColor={primaryColor}
-          surfaceSecondaryColor={surfaceSecondaryColor}
-          textColor={textColor}
-          textSecondaryColor={textSecondaryColor}
-          borderColor={borderColor}
-          onShareableMessageChange={onShareableMessageChange}
-        />
-      ) : null}
-      {screen === "maternity" ? (
-        <MaternityView
-          t={t}
-          primaryColor={primaryColor}
-          surfaceSecondaryColor={surfaceSecondaryColor}
-          textColor={textColor}
-          textSecondaryColor={textSecondaryColor}
-          borderColor={borderColor}
-          onShareableMessageChange={onShareableMessageChange}
-        />
-      ) : null}
-      {screen === "salary" ? (
-        <SalaryView
-          t={t}
-          primaryColor={primaryColor}
-          surfaceSecondaryColor={surfaceSecondaryColor}
-          textColor={textColor}
-          textSecondaryColor={textSecondaryColor}
-          borderColor={borderColor}
-          onShareableMessageChange={onShareableMessageChange}
-        />
-      ) : null}
-      {screen === "deposit" ? (
-        <DepositView
-          t={t}
-          primaryColor={primaryColor}
-          surfaceSecondaryColor={surfaceSecondaryColor}
-          textColor={textColor}
-          textSecondaryColor={textSecondaryColor}
-          borderColor={borderColor}
-          onShareableMessageChange={onShareableMessageChange}
-        />
-      ) : null}
+        {screen === "menu" ? (
+          <MenuView
+            t={t}
+            primaryColor={primaryColor}
+            surfaceColor={surfaceColor}
+            surfaceSecondaryColor={surfaceSecondaryColor}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+            borderColor={borderColor}
+            pushScreen={pushScreen}
+            onShareableMessageChange={onShareableMessageChange}
+          />
+        ) : null}
+        {screen === "paidLeave" ? (
+          <PaidLeaveView
+            t={t}
+            primaryColor={primaryColor}
+            surfaceSecondaryColor={surfaceSecondaryColor}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+            borderColor={borderColor}
+            onShareableMessageChange={onShareableMessageChange}
+          />
+        ) : null}
+        {screen === "maternity" ? (
+          <MaternityView
+            t={t}
+            primaryColor={primaryColor}
+            surfaceSecondaryColor={surfaceSecondaryColor}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+            borderColor={borderColor}
+            onShareableMessageChange={onShareableMessageChange}
+          />
+        ) : null}
+        {screen === "salary" ? (
+          <SalaryView
+            t={t}
+            primaryColor={primaryColor}
+            surfaceSecondaryColor={surfaceSecondaryColor}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+            borderColor={borderColor}
+            onShareableMessageChange={onShareableMessageChange}
+          />
+        ) : null}
+        {screen === "deposit" ? (
+          <DepositView
+            t={t}
+            primaryColor={primaryColor}
+            surfaceSecondaryColor={surfaceSecondaryColor}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+            borderColor={borderColor}
+            onShareableMessageChange={onShareableMessageChange}
+          />
+        ) : null}
 
-      <ThemedText type="caption" style={[styles.disclaimer, { color: textSecondaryColor }]}>
-        {t("amFinance.disclaimer")}
-      </ThemedText>
-    </ScrollView>
+        <ThemedText type="caption" style={[styles.disclaimer, { color: textSecondaryColor }]}>
+          {t("amFinance.disclaimer")}
+        </ThemedText>
+      </ScrollView>
+    </AmFinanceDraftContext.Provider>
   );
 }
 
@@ -168,7 +234,7 @@ function MenuView({
   textColor,
   textSecondaryColor,
   borderColor,
-  go,
+  pushScreen,
   onShareableMessageChange,
 }: {
   t: (k: string) => string;
@@ -178,7 +244,7 @@ function MenuView({
   textColor: string;
   textSecondaryColor: string;
   borderColor: string;
-  go: (s: FinanceScreen) => void;
+  pushScreen: (s: FinanceScreen) => void;
   onShareableMessageChange?: (message: string | null) => void;
 }) {
   useEffect(() => {
@@ -244,7 +310,7 @@ function MenuView({
         <TouchableOpacity
           key={c.id}
           activeOpacity={0.88}
-          onPress={() => go(c.id)}
+          onPress={() => pushScreen(c.id)}
           style={[
             styles.menuCard,
             {
@@ -318,8 +384,11 @@ function SalaryTypeToggle({
             type="caption"
             numberOfLines={2}
             ellipsizeMode="tail"
-            textAlign="center"
-            style={{ fontWeight: "700", color: isGross ? primaryColor : textSecondaryColor }}
+            style={{
+              textAlign: "center",
+              fontWeight: "700",
+              color: isGross ? primaryColor : textSecondaryColor,
+            }}
           >
             {t("amFinance.gross")}
           </ThemedText>
@@ -335,8 +404,11 @@ function SalaryTypeToggle({
             type="caption"
             numberOfLines={2}
             ellipsizeMode="tail"
-            textAlign="center"
-            style={{ fontWeight: "700", color: !isGross ? primaryColor : textSecondaryColor }}
+            style={{
+              textAlign: "center",
+              fontWeight: "700",
+              color: !isGross ? primaryColor : textSecondaryColor,
+            }}
           >
             {t("amFinance.net")}
           </ThemedText>
@@ -350,20 +422,44 @@ function Field({
   value,
   onChangeText,
   keyboardType,
+  placeholder,
   borderColor,
   surfaceColor,
   textColor,
   textSecondaryColor,
+  numberGrouping,
 }: {
   label: string;
   value: string;
   onChangeText: (s: string) => void;
-  keyboardType?: "decimal-pad" | "number-pad";
+  keyboardType?: "decimal-pad" | "number-pad" | "default";
+  placeholder?: string;
   borderColor: string;
   surfaceColor: string;
   textColor: string;
   textSecondaryColor: string;
+  /** When set, value is stored without thousand separators; shown grouped in the field. */
+  numberGrouping?: "integer" | "decimal";
 }) {
+  const displayValue =
+    numberGrouping === "integer"
+      ? value === ""
+        ? ""
+        : addThousandsDotsFromDigitString(sanitizeIntegerDigits(value))
+      : numberGrouping === "decimal"
+        ? canonicalDecimalToDisplay(value)
+        : value;
+
+  const handleChange = (text: string) => {
+    if (numberGrouping === "integer") {
+      onChangeText(sanitizeIntegerDigits(text));
+    } else if (numberGrouping === "decimal") {
+      onChangeText(displayDecimalToCanonical(text));
+    } else {
+      onChangeText(text);
+    }
+  };
+
   return (
     <View style={{ marginBottom: 14 }}>
       <ThemedText
@@ -375,9 +471,10 @@ function Field({
         {label}
       </ThemedText>
       <TextInput
-        value={value}
-        onChangeText={onChangeText}
+        value={displayValue}
+        onChangeText={handleChange}
         keyboardType={keyboardType ?? "decimal-pad"}
+        placeholder={placeholder ?? "0"}
         placeholderTextColor={textSecondaryColor}
         style={[
           styles.input,
@@ -470,10 +567,8 @@ function PaidLeaveView({
   onShareableMessageChange?: (message: string | null) => void;
 }) {
   const surfaceColor = useThemeColor({}, "surface");
-  const [salaryStr, setSalaryStr] = useState("500000");
-  const [leaveStr, setLeaveStr] = useState("14");
-  const [isGross, setIsGross] = useState(false);
-  const [workingDayBasis, setWorkingDayBasis] = useState(true);
+  const { draft, setDraft } = useAmFinanceDraft();
+  const { salaryStr, leaveStr, isGross, workingDayBasis } = draft.paidLeave;
 
   const result = useMemo(() => {
     const salary = parseNum(salaryStr);
@@ -512,9 +607,26 @@ function PaidLeaveView({
       >
         {t("amFinance.card.paidLeave")}
       </ThemedText>
+      <TouchableOpacity
+        onPress={() =>
+          setDraft((d) => ({
+            ...d,
+            paidLeave: { ...d.paidLeave, salaryStr: "", leaveStr: "" },
+          }))
+        }
+        style={[styles.clearAllRow, { borderColor }]}
+        accessibilityRole="button"
+      >
+        <Ionicons name="trash-outline" size={18} color={primaryColor} />
+        <ThemedText type="defaultSemiBold" style={{ color: primaryColor }}>
+          {t("amFinance.clearAllFields")}
+        </ThemedText>
+      </TouchableOpacity>
       <SalaryTypeToggle
         isGross={isGross}
-        setIsGross={setIsGross}
+        setIsGross={(v) =>
+          setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, isGross: v } }))
+        }
         t={t}
         borderColor={borderColor}
         surfaceColor={surfaceColor}
@@ -525,20 +637,26 @@ function PaidLeaveView({
       <Field
         label={t("amFinance.monthlySalary")}
         value={salaryStr}
-        onChangeText={setSalaryStr}
+        onChangeText={(salaryStr) =>
+          setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, salaryStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
       />
       <Field
         label={t("amFinance.leaveDays")}
         value={leaveStr}
-        onChangeText={setLeaveStr}
+        onChangeText={(leaveStr) =>
+          setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, leaveStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
       />
       <View style={styles.switchRow}>
         <ThemedText
@@ -551,7 +669,9 @@ function PaidLeaveView({
         <Switch
           style={styles.switchControl}
           value={workingDayBasis}
-          onValueChange={setWorkingDayBasis}
+          onValueChange={(workingDayBasis) =>
+            setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, workingDayBasis } }))
+          }
         />
       </View>
 
@@ -662,15 +782,17 @@ function MaternityView({
   onShareableMessageChange?: (message: string | null) => void;
 }) {
   const surfaceColor = useThemeColor({}, "surface");
-  const [salaryStr, setSalaryStr] = useState("500000");
-  const [pregStr, setPregStr] = useState("70");
-  const [birthStr, setBirthStr] = useState("70");
-  const [isGross, setIsGross] = useState(false);
+  const { draft, setDraft } = useAmFinanceDraft();
+  const { salaryStr, pregStr, birthStr, isGross, complicatedBirth, childrenCountStr } =
+    draft.maternity;
 
   const result = useMemo(() => {
     const salary = parseNum(salaryStr);
     const p = parseNum(pregStr) ?? 0;
     const b = parseNum(birthStr) ?? 0;
+    const childrenParsed = parseNum(childrenCountStr);
+    const childrenCount =
+      childrenParsed === null || childrenParsed < 1 ? 1 : Math.min(20, Math.floor(childrenParsed));
     if (salary === null || salary <= 0) return null;
     if (p + b <= 0) return null;
     return calculateMaternity({
@@ -678,8 +800,10 @@ function MaternityView({
       isGross,
       pregnancyDays: p,
       childbirthDays: b,
+      complicatedBirth,
+      childrenCount,
     });
-  }, [salaryStr, pregStr, birthStr, isGross]);
+  }, [salaryStr, pregStr, birthStr, isGross, complicatedBirth, childrenCountStr]);
 
   useEffect(() => {
     if (!onShareableMessageChange) return;
@@ -687,13 +811,20 @@ function MaternityView({
       onShareableMessageChange(null);
       return;
     }
-    onShareableMessageChange(
-      [
-        t("amFinance.card.maternity"),
-        `${t("amFinance.maternity.estimatedTotal")}: ${formatAmd(result.estimatedBenefitGross)}`,
-        `${t("amFinance.maternity.estimatedNet")}: ${formatAmd(result.estimatedBenefitNet)}`,
-      ].join("\n")
-    );
+    const lines = [
+      t("amFinance.card.maternity"),
+      `${t("amFinance.maternity.totalLeaveDays")}: ${result.totalLeaveDays}`,
+      `${t("amFinance.maternity.estimatedTotal")}: ${formatAmd(result.estimatedBenefitGross)}`,
+      `${t("amFinance.maternity.estimatedNet")}: ${formatAmd(result.estimatedBenefitNet)}`,
+    ];
+    if (result.extraChildbirthDays > 0) {
+      lines.splice(
+        2,
+        0,
+        `${t("amFinance.maternity.extraChildbirthDays")}: ${result.extraChildbirthDays}`
+      );
+    }
+    onShareableMessageChange(lines.join("\n"));
   }, [result, t, onShareableMessageChange]);
 
   return (
@@ -706,9 +837,33 @@ function MaternityView({
       >
         {t("amFinance.card.maternity")}
       </ThemedText>
+      <TouchableOpacity
+        onPress={() =>
+          setDraft((d) => ({
+            ...d,
+            maternity: {
+              ...d.maternity,
+              salaryStr: "",
+              pregStr: "",
+              birthStr: "",
+              complicatedBirth: false,
+              childrenCountStr: "1",
+            },
+          }))
+        }
+        style={[styles.clearAllRow, { borderColor }]}
+        accessibilityRole="button"
+      >
+        <Ionicons name="trash-outline" size={18} color={primaryColor} />
+        <ThemedText type="defaultSemiBold" style={{ color: primaryColor }}>
+          {t("amFinance.clearAllFields")}
+        </ThemedText>
+      </TouchableOpacity>
       <SalaryTypeToggle
         isGross={isGross}
-        setIsGross={setIsGross}
+        setIsGross={(v) =>
+          setDraft((d) => ({ ...d, maternity: { ...d.maternity, isGross: v } }))
+        }
         t={t}
         borderColor={borderColor}
         surfaceColor={surfaceColor}
@@ -719,29 +874,69 @@ function MaternityView({
       <Field
         label={t("amFinance.monthlySalary")}
         value={salaryStr}
-        onChangeText={setSalaryStr}
+        onChangeText={(salaryStr) =>
+          setDraft((d) => ({ ...d, maternity: { ...d.maternity, salaryStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
       />
       <Field
         label={t("amFinance.pregnancyDays")}
         value={pregStr}
-        onChangeText={setPregStr}
+        onChangeText={(pregStr) =>
+          setDraft((d) => ({ ...d, maternity: { ...d.maternity, pregStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
       />
       <Field
         label={t("amFinance.childbirthDays")}
         value={birthStr}
-        onChangeText={setBirthStr}
+        onChangeText={(birthStr) =>
+          setDraft((d) => ({ ...d, maternity: { ...d.maternity, birthStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
+      />
+      <View style={styles.switchRow}>
+        <ThemedText
+          style={[{ color: textColor }, styles.switchLabelText]}
+          numberOfLines={4}
+          ellipsizeMode="tail"
+        >
+          {t("amFinance.maternity.complicatedBirth")}
+        </ThemedText>
+        <Switch
+          style={styles.switchControl}
+          value={complicatedBirth}
+          onValueChange={(complicatedBirth) =>
+            setDraft((d) => ({ ...d, maternity: { ...d.maternity, complicatedBirth } }))
+          }
+        />
+      </View>
+      <Field
+        label={t("amFinance.maternity.childrenCount")}
+        value={childrenCountStr}
+        onChangeText={(childrenCountStr) =>
+          setDraft((d) => ({
+            ...d,
+            maternity: { ...d.maternity, childrenCountStr: sanitizeIntegerDigits(childrenCountStr) },
+          }))
+        }
+        borderColor={borderColor}
+        surfaceColor={surfaceColor}
+        textColor={textColor}
+        textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
       />
 
       {result ? (
@@ -755,6 +950,11 @@ function MaternityView({
             {t("amFinance.results")}
           </ThemedText>
           <View style={{ gap: 6, marginTop: 8 }}>
+            <RowKV label={t("amFinance.maternity.totalLeaveDays")} value={String(result.totalLeaveDays)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
+            {result.extraChildbirthDays > 0 ? (
+              <RowKV label={t("amFinance.maternity.extraChildbirthDays")} value={String(result.extraChildbirthDays)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
+            ) : null}
+            <RowKV label={t("amFinance.maternity.effectiveChildbirthDays")} value={String(result.effectiveChildbirthDays)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
             <RowKV label={t("amFinance.maternity.dailyAverage")} value={formatAmd(result.dailyAverageGross)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
             <RowKV label={t("amFinance.maternity.estimatedTotal")} value={formatAmd(result.estimatedBenefitGross)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
             <RowKV label={t("amFinance.maternity.estimatedNet")} value={formatAmd(result.estimatedBenefitNet)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
@@ -785,15 +985,27 @@ function MaternityView({
           <ThemedText type="caption" numberOfLines={8} style={{ color: textSecondaryColor, marginTop: 6 }}>
             {t("amFinance.maternity.noteLogic")}
           </ThemedText>
+          <ThemedText type="caption" numberOfLines={8} style={{ color: textSecondaryColor, marginTop: 6 }}>
+            {t("amFinance.maternity.noteComplicatedMultiple")}
+          </ThemedText>
           <TouchableOpacity
             style={[styles.shareRow, { marginTop: 16 }]}
-            onPress={() =>
-              void shareLines([
+            onPress={() => {
+              const shareParts = [
                 t("amFinance.card.maternity"),
+                `${t("amFinance.maternity.totalLeaveDays")}: ${result.totalLeaveDays}`,
+              ];
+              if (result.extraChildbirthDays > 0) {
+                shareParts.push(
+                  `${t("amFinance.maternity.extraChildbirthDays")}: ${result.extraChildbirthDays}`
+                );
+              }
+              shareParts.push(
                 `${t("amFinance.maternity.estimatedTotal")}: ${formatAmd(result.estimatedBenefitGross)}`,
-                `${t("amFinance.maternity.estimatedNet")}: ${formatAmd(result.estimatedBenefitNet)}`,
-              ])
-            }
+                `${t("amFinance.maternity.estimatedNet")}: ${formatAmd(result.estimatedBenefitNet)}`
+              );
+              void shareLines(shareParts);
+            }}
           >
             <Ionicons name="share-outline" size={20} color={primaryColor} />
             <ThemedText
@@ -830,14 +1042,8 @@ function SalaryView({
   onShareableMessageChange?: (message: string | null) => void;
 }) {
   const surfaceColor = useThemeColor({}, "surface");
-  const [amountStr, setAmountStr] = useState("500000");
-  const [knowGross, setKnowGross] = useState(false);
-
-  // #region agent log
-  // NOTE: device cannot reach 127.0.0.1 host logger; keep console evidence too.
-  console.log("[dbg 45dbaa][H1] SalaryView typeof hexToRgba =", typeof hexToRgba);
-  fetch('http://127.0.0.1:7338/ingest/0d9f3a3e-388a-412c-97f8-11d612315339',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45dbaa'},body:JSON.stringify({sessionId:'45dbaa',runId:'pre-fix',hypothesisId:'H1',location:'components/ArmeniaFinanceModal.tsx:SalaryView',message:'hexToRgba presence check',data:{typeofHexToRgba:typeof hexToRgba},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
+  const { draft, setDraft } = useAmFinanceDraft();
+  const { amountStr, knowGross } = draft.salary;
 
   const result = useMemo(() => {
     const amt = parseNum(amountStr);
@@ -873,10 +1079,20 @@ function SalaryView({
       >
         {t("amFinance.card.salary")}
       </ThemedText>
+      <TouchableOpacity
+        onPress={() => setDraft((d) => ({ ...d, salary: { ...d.salary, amountStr: "" } }))}
+        style={[styles.clearAllRow, { borderColor }]}
+        accessibilityRole="button"
+      >
+        <Ionicons name="trash-outline" size={18} color={primaryColor} />
+        <ThemedText type="defaultSemiBold" style={{ color: primaryColor }}>
+          {t("amFinance.clearAllFields")}
+        </ThemedText>
+      </TouchableOpacity>
       <View style={[styles.segment, { borderColor, backgroundColor: surfaceColor }]}>
         <TouchableOpacity
           style={[styles.segmentBtn, knowGross && { backgroundColor: hexToRgba(primaryColor, 0.2) }]}
-          onPress={() => setKnowGross(true)}
+          onPress={() => setDraft((d) => ({ ...d, salary: { ...d.salary, knowGross: true } }))}
         >
           <ThemedText
             type="caption"
@@ -893,7 +1109,7 @@ function SalaryView({
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.segmentBtn, !knowGross && { backgroundColor: hexToRgba(primaryColor, 0.2) }]}
-          onPress={() => setKnowGross(false)}
+          onPress={() => setDraft((d) => ({ ...d, salary: { ...d.salary, knowGross: false } }))}
         >
           <ThemedText
             type="caption"
@@ -912,11 +1128,14 @@ function SalaryView({
       <Field
         label={knowGross ? t("amFinance.gross") : t("amFinance.net")}
         value={amountStr}
-        onChangeText={setAmountStr}
+        onChangeText={(amountStr) =>
+          setDraft((d) => ({ ...d, salary: { ...d.salary, amountStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
       />
 
       {result ? (
@@ -984,14 +1203,17 @@ function DepositView({
   onShareableMessageChange?: (message: string | null) => void;
 }) {
   const surfaceColor = useThemeColor({}, "surface");
-  const [principalStr, setPrincipalStr] = useState("1000000");
-  const [rateStr, setRateStr] = useState("9");
-  const [monthsStr, setMonthsStr] = useState("12");
-  const [yearsMode, setYearsMode] = useState(false);
-  const [yearsStr, setYearsStr] = useState("1");
-  const [compound, setCompound] = useState(true);
-  const [contribStr, setContribStr] = useState("0");
-  const [taxOnProfit, setTaxOnProfit] = useState(true);
+  const { draft, setDraft } = useAmFinanceDraft();
+  const {
+    principalStr,
+    rateStr,
+    monthsStr,
+    yearsMode,
+    yearsStr,
+    compound,
+    contribStr,
+    taxOnProfit,
+  } = draft.deposit;
 
   const result = useMemo(() => {
     const principal = parseNum(principalStr);
@@ -1060,23 +1282,51 @@ function DepositView({
       >
         {t("amFinance.card.deposit")}
       </ThemedText>
+      <TouchableOpacity
+        onPress={() =>
+          setDraft((d) => ({
+            ...d,
+            deposit: {
+              ...d.deposit,
+              principalStr: "",
+              rateStr: "",
+              monthsStr: "",
+              yearsStr: "",
+              contribStr: "",
+            },
+          }))
+        }
+        style={[styles.clearAllRow, { borderColor }]}
+        accessibilityRole="button"
+      >
+        <Ionicons name="trash-outline" size={18} color={primaryColor} />
+        <ThemedText type="defaultSemiBold" style={{ color: primaryColor }}>
+          {t("amFinance.clearAllFields")}
+        </ThemedText>
+      </TouchableOpacity>
       <Field
         label={t("amFinance.deposit.initial")}
         value={principalStr}
-        onChangeText={setPrincipalStr}
+        onChangeText={(principalStr) =>
+          setDraft((d) => ({ ...d, deposit: { ...d.deposit, principalStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
       />
       <Field
         label={t("amFinance.deposit.rate")}
         value={rateStr}
-        onChangeText={setRateStr}
+        onChangeText={(rateStr) =>
+          setDraft((d) => ({ ...d, deposit: { ...d.deposit, rateStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="decimal"
       />
       <View style={styles.switchRow}>
         <ThemedText
@@ -1086,27 +1336,39 @@ function DepositView({
         >
           {yearsMode ? t("amFinance.deposit.useYears") : t("amFinance.deposit.useMonths")}
         </ThemedText>
-        <Switch style={styles.switchControl} value={yearsMode} onValueChange={setYearsMode} />
+        <Switch
+          style={styles.switchControl}
+          value={yearsMode}
+          onValueChange={(yearsMode) =>
+            setDraft((d) => ({ ...d, deposit: { ...d.deposit, yearsMode } }))
+          }
+        />
       </View>
       {yearsMode ? (
         <Field
           label={t("amFinance.deposit.years")}
           value={yearsStr}
-          onChangeText={setYearsStr}
+          onChangeText={(yearsStr) =>
+            setDraft((d) => ({ ...d, deposit: { ...d.deposit, yearsStr } }))
+          }
           borderColor={borderColor}
           surfaceColor={surfaceColor}
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
+          numberGrouping="decimal"
         />
       ) : (
         <Field
           label={t("amFinance.deposit.months")}
           value={monthsStr}
-          onChangeText={setMonthsStr}
+          onChangeText={(monthsStr) =>
+            setDraft((d) => ({ ...d, deposit: { ...d.deposit, monthsStr } }))
+          }
           borderColor={borderColor}
           surfaceColor={surfaceColor}
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
+          numberGrouping="integer"
         />
       )}
       <View style={styles.switchRow}>
@@ -1117,16 +1379,25 @@ function DepositView({
         >
           {compound ? t("amFinance.deposit.compound") : t("amFinance.deposit.simple")}
         </ThemedText>
-        <Switch style={styles.switchControl} value={compound} onValueChange={setCompound} />
+        <Switch
+          style={styles.switchControl}
+          value={compound}
+          onValueChange={(compound) =>
+            setDraft((d) => ({ ...d, deposit: { ...d.deposit, compound } }))
+          }
+        />
       </View>
       <Field
         label={t("amFinance.deposit.monthlyContribution")}
         value={contribStr}
-        onChangeText={setContribStr}
+        onChangeText={(contribStr) =>
+          setDraft((d) => ({ ...d, deposit: { ...d.deposit, contribStr } }))
+        }
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
       />
       <View style={styles.switchRow}>
         <ThemedText
@@ -1136,7 +1407,13 @@ function DepositView({
         >
           {t("amFinance.deposit.taxOnProfit")}
         </ThemedText>
-        <Switch style={styles.switchControl} value={taxOnProfit} onValueChange={setTaxOnProfit} />
+        <Switch
+          style={styles.switchControl}
+          value={taxOnProfit}
+          onValueChange={(taxOnProfit) =>
+            setDraft((d) => ({ ...d, deposit: { ...d.deposit, taxOnProfit } }))
+          }
+        />
       </View>
 
       {result && chartData ? (
@@ -1328,5 +1605,16 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
     minWidth: 0,
+  },
+  clearAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });

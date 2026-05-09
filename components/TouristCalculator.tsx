@@ -9,17 +9,20 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
 import { getAsyncStorage } from "@/lib/storage";
+import {
+  canonicalDecimalToDisplay,
+  displayDecimalToCanonical,
+  formatGroupedNumber,
+  parseGroupedNumericInput,
+} from "@/lib/numberFormat";
 
 function parseNum(raw: string): number | null {
-  const s = raw.replace(/\s/g, "").replace(",", ".").trim();
-  if (s === "") return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  return parseGroupedNumericInput(raw);
 }
 
 function fmt2(n: number | null | undefined): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return "—";
-  return n.toFixed(2);
+  return formatGroupedNumber(n, 2);
 }
 
 export default function TouristCalculator({
@@ -208,7 +211,10 @@ export default function TouristCalculator({
   const hasAutoRate = autoRateToAmd !== null && Number.isFinite(autoRateToAmd) && (autoRateToAmd as number) > 0;
   const rateDisplay = useMemo(() => {
     if (!hasAutoRate) return "—";
-    return (autoRateToAmd as number).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+    const r = autoRateToAmd as number;
+    const trimmed = r.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? formatGroupedNumber(n, 6) : "—";
   }, [autoRateToAmd, hasAutoRate]);
 
   const effectiveRate = useMemo(() => {
@@ -260,9 +266,9 @@ export default function TouristCalculator({
     onShareableMessageChange(
       [
         t("touristCalc.share.title"),
-        `${t("touristCalc.field.amount")}: ${result.amount} ${fromCurrency}`,
-        `${t("touristCalc.field.rate")}: ${result.rate}`,
-        `${t("touristCalc.result.received")}: ${result.received.toFixed(2)}`,
+        `${t("touristCalc.field.amount")}: ${formatGroupedNumber(result.amount, 2)} ${fromCurrency}`,
+        `${t("touristCalc.field.rate")}: ${formatGroupedNumber(result.rate, 6)}`,
+        `${t("touristCalc.result.received")}: ${formatGroupedNumber(result.received, 2)}`,
       ].join("\n")
     );
   }, [result, onShareableMessageChange, t, fromCurrency]);
@@ -292,6 +298,7 @@ export default function TouristCalculator({
           borderColor={borderColor}
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
+          numberGrouping="decimal"
         />
 
         <TouchableOpacity
@@ -338,6 +345,7 @@ export default function TouristCalculator({
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
           editable={useManualRate}
+          numberGrouping={useManualRate ? "decimal" : undefined}
         />
         <ThemedText type="caption" style={{ color: textSecondaryColor, marginTop: -6, marginBottom: 8 }}>
           {useManualRate
@@ -362,6 +370,7 @@ export default function TouristCalculator({
           borderColor={borderColor}
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
+          numberGrouping="decimal"
         />
 
         <Field
@@ -372,6 +381,7 @@ export default function TouristCalculator({
           borderColor={borderColor}
           textColor={textColor}
           textSecondaryColor={textSecondaryColor}
+          numberGrouping="decimal"
         />
 
         <View style={{ gap: 8, marginTop: 10 }}>
@@ -411,16 +421,33 @@ function Field(props: {
   textColor: string;
   textSecondaryColor: string;
   editable?: boolean;
+  numberGrouping?: "decimal";
 }) {
-  const { label, value, onChangeText, surfaceColor, borderColor, textColor, textSecondaryColor, editable } = props;
+  const {
+    label,
+    value,
+    onChangeText,
+    surfaceColor,
+    borderColor,
+    textColor,
+    textSecondaryColor,
+    editable,
+    numberGrouping,
+  } = props;
+  const display =
+    numberGrouping === "decimal" ? canonicalDecimalToDisplay(value) : value;
+  const handleChange =
+    numberGrouping === "decimal"
+      ? (s: string) => onChangeText(displayDecimalToCanonical(s))
+      : onChangeText;
   return (
     <View style={{ marginBottom: 12 }}>
       <ThemedText type="caption" style={{ color: textSecondaryColor, marginBottom: 6 }}>
         {label}
       </ThemedText>
       <TextInput
-        value={value}
-        onChangeText={onChangeText}
+        value={display}
+        onChangeText={handleChange}
         keyboardType="decimal-pad"
         editable={editable ?? true}
         placeholder="0"

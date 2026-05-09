@@ -6,19 +6,47 @@ export type MaternityInput = {
   isGross: boolean;
   pregnancyDays: number;
   childbirthDays: number;
+  /** Complicated delivery — adds illustrative extra days to the childbirth segment. */
+  complicatedBirth: boolean;
+  /** Children born in one delivery (minimum 1). */
+  childrenCount: number;
 };
 
 export type MaternityResult = {
   monthlyGross: number;
   monthlyBreakdown: ReturnType<typeof payrollBreakdownFromGross>;
   dailyAverageGross: number;
+  pregnancyDays: number;
+  /** User-entered childbirth days (before options). */
+  baseChildbirthDays: number;
+  /** Extra days from complicated birth / multiple birth options. */
+  extraChildbirthDays: number;
+  effectiveChildbirthDays: number;
   totalLeaveDays: number;
+  complicatedBirth: boolean;
+  childrenCount: number;
   estimatedBenefitGross: number;
   estimatedBenefitNet: number;
   benefitBreakdown: ReturnType<typeof payrollBreakdownFromGross>;
   /** Benefit scaled to a 30-day month (illustrative). */
   monthlyEquivalentGross: number;
 };
+
+/** Illustrative extra postnatal-style days from UI options (see AM_TAX_CONSTANTS). */
+export function maternityExtraChildbirthDays(
+  complicatedBirth: boolean,
+  childrenCount: number
+): number {
+  let extra = 0;
+  if (complicatedBirth) {
+    extra += C.MATERNITY_COMPLICATED_BIRTH_EXTRA_CHILDBIRTH_DAYS;
+  }
+  const n = Math.max(1, Math.floor(childrenCount));
+  if (n > 1) {
+    extra += (n - 1) * C.MATERNITY_EACH_ADDITIONAL_CHILD_EXTRA_CHILDBIRTH_DAYS;
+  }
+  return extra;
+}
 
 /**
  * Illustrative maternity / pregnancy leave benefit calculator.
@@ -29,8 +57,15 @@ export function calculateMaternity(input: MaternityInput): MaternityResult | nul
     return null;
   }
   const pregnancyDays = Math.max(0, input.pregnancyDays);
-  const childbirthDays = Math.max(0, input.childbirthDays);
-  const totalLeaveDays = pregnancyDays + childbirthDays;
+  const baseChildbirthDays = Math.max(0, input.childbirthDays);
+  const childrenCount = Math.min(
+    20,
+    Math.max(1, Math.floor(Number.isFinite(input.childrenCount) ? input.childrenCount : 1))
+  );
+  const complicatedBirth = Boolean(input.complicatedBirth);
+  const extraChildbirthDays = maternityExtraChildbirthDays(complicatedBirth, childrenCount);
+  const effectiveChildbirthDays = baseChildbirthDays + extraChildbirthDays;
+  const totalLeaveDays = pregnancyDays + effectiveChildbirthDays;
   if (totalLeaveDays <= 0) return null;
 
   const monthlyGross = input.isGross
@@ -49,7 +84,13 @@ export function calculateMaternity(input: MaternityInput): MaternityResult | nul
     monthlyGross,
     monthlyBreakdown,
     dailyAverageGross,
+    pregnancyDays,
+    baseChildbirthDays,
+    extraChildbirthDays,
+    effectiveChildbirthDays,
     totalLeaveDays,
+    complicatedBirth,
+    childrenCount,
     estimatedBenefitGross,
     estimatedBenefitNet: benefitBreakdown.netSalary,
     benefitBreakdown,

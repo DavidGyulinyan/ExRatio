@@ -40,6 +40,13 @@ export const AM_FINANCE_EN: Record<string, string> = {
     "Typical combined pregnancy & childbirth leave is often around 140 calendar days — verify with your employer and social rules.",
   "amFinance.maternity.noteLogic":
     "This tool uses your gross daily equivalent × leave days × a configurable benefit factor. Official benefits may use caps and insured income history.",
+  "amFinance.maternity.complicatedBirth": "Complicated childbirth",
+  "amFinance.maternity.childrenCount": "Children (single delivery)",
+  "amFinance.maternity.totalLeaveDays": "Total leave days",
+  "amFinance.maternity.extraChildbirthDays": "Extra childbirth days (options)",
+  "amFinance.maternity.effectiveChildbirthDays": "Childbirth segment (incl. extras)",
+  "amFinance.maternity.noteComplicatedMultiple":
+    "Extra days for complicated birth and multiple births are illustrative defaults — confirm with the RA Labor Code, employer, and social insurance rules.",
   "amFinance.paidLeave.note":
     "Leave pay is simplified from your last month’s salary. Real averages may use 12-month history.",
   "amFinance.deposit.initial": "Initial deposit (AMD)",
@@ -70,6 +77,7 @@ export const AM_FINANCE_EN: Record<string, string> = {
   "amFinance.errors.invalid": "Enter valid numbers",
   "amFinance.errors.positive": "Values must be greater than zero",
   "amFinance.shareSummary": "Share summary",
+  "amFinance.clearAllFields": "Clear all fields",
 };
 
 export const AM_FINANCE_HY: Record<string, string> = {
@@ -113,6 +121,13 @@ export const AM_FINANCE_HY: Record<string, string> = {
     "Հղիության և ծննդյան արձակուրդը հաճախ միասին մոտ 140 օր է — ստուգեք գործատուի և սոցապաշտպանության կանոններով։",
   "amFinance.maternity.noteLogic":
     "Օգտագործում ենք օրական կեղտոտ միջին × օրեր × գործակից։ Պետական օգնությունը կարող է ունենալ առաստաղներ և ապահովագրական պատմություն։",
+  "amFinance.maternity.complicatedBirth": "Բարդ ծննդաբերություն",
+  "amFinance.maternity.childrenCount": "Երեխաների թիվ (մեկ ծննդաբերությամբ)",
+  "amFinance.maternity.totalLeaveDays": "Ընդհանուր արձակուրդի օրեր",
+  "amFinance.maternity.extraChildbirthDays": "Լրացուցիչ ծննդյան օրեր (տարբերակներ)",
+  "amFinance.maternity.effectiveChildbirthDays": "Ծննդյան հատվածի օրեր (ներառյալ լրացում)",
+  "amFinance.maternity.noteComplicatedMultiple":
+    "Բարդ ծննդաբերության և մեկից ավելի երեխա ունենալու դեպքում ավելացվող օրերը մոտավոր են — ստուգեք ՀՀ աշխատանքային օրենսգիրքով, գործատուով և սոցապաշտպանության կանոններով։",
   "amFinance.paidLeave.note":
     "Արձակուրդի վճարը հաշվարկված է վերջին ամսվա աշխատավարձից։ Իրականում կարող է օգտագործվել 12 ամիսների միջինը։",
   "amFinance.deposit.initial": "Սկզբնական ավանդ (դրամ)",
@@ -132,7 +147,7 @@ export const AM_FINANCE_HY: Record<string, string> = {
   "amFinance.deposit.useMonths": "Ամիսներով",
   "amFinance.card.paidLeave": "Ֆիզ արձակուրդ",
   "amFinance.card.paidLeave.desc": "Օրականից արձակուրդի վճար",
-  "amFinance.card.maternity": "Կանանց ֆիզ / ծնունդ",
+  "amFinance.card.maternity": "Հղիության և ծննդյան արձակուրդ",
   "amFinance.card.maternity.desc": "Մոտավոր օգնության գնահատում",
   "amFinance.card.salary": "Աշխատավարձ",
   "amFinance.card.salary.desc": "Կեղտոտ ↔ մաքուր, պահումներ",
@@ -143,4 +158,5 @@ export const AM_FINANCE_HY: Record<string, string> = {
   "amFinance.errors.invalid": "Մուտքագրեք թիվ",
   "amFinance.errors.positive": "Արժեքները պետք է դրական լինեն",
   "amFinance.shareSummary": "Կիսվել արդյունքով",
+  "amFinance.clearAllFields": "Մաքրել բոլորը",
 };

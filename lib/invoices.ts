@@ -1,5 +1,6 @@
 import { getAsyncStorage } from "@/lib/storage";
 import { formatDateDDMMYY } from "@/lib/dateFormat";
+import { formatGroupedNumber } from "@/lib/numberFormat";
 
 export type InvoiceCurrency = "AMD" | "USD" | "EUR" | "RUB" | "GEL";
 
@@ -12,14 +13,25 @@ export type InvoiceTax = {
   includedInPrice: boolean;
 };
 
+export type InvoiceLineItem = {
+  id: string;
+  title: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
+
 export type Invoice = {
   id: string;
   invoiceNumber: string;
   invoiceDateISO: string;
   sellerName: string;
   clientName: string;
+  /** Free-form description; kept for legacy invoices and as a fallback when no items are set. */
   serviceDescription: string;
   currency: InvoiceCurrency;
+  /** Legacy single-amount field. Used when `items` is empty/undefined. */
   amount: number;
   tax?: InvoiceTax;
   notes?: string;
@@ -28,7 +40,9 @@ export type Invoice = {
   /** Optional due date for reminders. */
   dueDateISO?: string;
   /** Mark whether invoice is paid (dashboard stats). */
-  status: "draft" | "sent" | "paid" | "overdue";
+  status: InvoiceStatus;
+  /** Optional explicit line items. When present and non-empty, totals are computed from these. */
+  items?: InvoiceLineItem[];
 };
 
 export type InvoiceTotals = {
@@ -37,23 +51,55 @@ export type InvoiceTotals = {
   total: number;
 };
 
-export function computeInvoiceTotals(invoice: Pick<Invoice, "amount" | "tax">): InvoiceTotals {
-  const subtotal = Math.max(0, invoice.amount);
+function lineItemSubtotal(items: InvoiceLineItem[] | undefined): number | null {
+  if (!items || items.length === 0) return null;
+  let sum = 0;
+  for (const it of items) {
+    const q = Number.isFinite(it.quantity) ? it.quantity : 0;
+    const p = Number.isFinite(it.unitPrice) ? it.unitPrice : 0;
+    sum += Math.max(0, q) * Math.max(0, p);
+  }
+  return sum;
+}
+
+export function computeInvoiceTotals(
+  invoice: Pick<Invoice, "amount" | "tax" | "items">
+): InvoiceTotals {
+  const itemsSubtotal = lineItemSubtotal(invoice.items);
+  const baseSubtotal =
+    itemsSubtotal !== null ? itemsSubtotal : Math.max(0, invoice.amount ?? 0);
+
   const taxRate = Math.max(0, invoice.tax?.rate ?? 0);
   const included = Boolean(invoice.tax?.includedInPrice);
 
   if (taxRate === 0) {
-    return { subtotal, taxAmount: 0, total: subtotal };
+    return { subtotal: baseSubtotal, taxAmount: 0, total: baseSubtotal };
   }
 
   if (included) {
-    const base = subtotal / (1 + taxRate);
-    const taxAmount = Math.max(0, subtotal - base);
-    return { subtotal: base, taxAmount, total: subtotal };
+    const base = baseSubtotal / (1 + taxRate);
+    const taxAmount = Math.max(0, baseSubtotal - base);
+    return { subtotal: base, taxAmount, total: baseSubtotal };
   }
 
-  const taxAmount = subtotal * taxRate;
-  return { subtotal, taxAmount, total: subtotal + taxAmount };
+  const taxAmount = baseSubtotal * taxRate;
+  return { subtotal: baseSubtotal, taxAmount, total: baseSubtotal + taxAmount };
+}
+
+/**
+ * Whether an invoice should be treated as overdue (sent/draft and past due date,
+ * unless already marked paid). Pure function — does not mutate stored status.
+ */
+export function isInvoiceOverdue(invoice: Pick<Invoice, "status" | "dueDateISO">, nowMs: number = Date.now()): boolean {
+  if (!invoice.dueDateISO) return false;
+  if (invoice.status === "paid") return false;
+  const t = new Date(invoice.dueDateISO).getTime();
+  if (!Number.isFinite(t)) return false;
+  return t < nowMs;
+}
+
+export function makeLineItemId(): string {
+  return `li_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`;
 }
 
 const INVOICES_KEY = "invoices.v1";
@@ -105,12 +151,11 @@ export function invoiceHtmlTemplate(opts: {
   locale: string;
   theme: "light" | "dark";
 }): string {
-  const { invoice, locale, theme } = opts;
+  const { invoice, theme } = opts;
   const totals = computeInvoiceTotals(invoice);
   const isDark = theme === "dark";
 
-  const nfMoney = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
-  const format = (n: number) => nfMoney.format(Number.isFinite(n) ? n : 0);
+  const format = (n: number) => formatGroupedNumber(Number.isFinite(n) ? n : 0, 2);
 
   const bg = isDark ? "#0B0F19" : "#FFFFFF";
   const surface = isDark ? "#111827" : "#F8FAFC";

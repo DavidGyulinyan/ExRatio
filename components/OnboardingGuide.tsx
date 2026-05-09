@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -115,14 +116,19 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ onComplete }) => {
          </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator
+        bounces
+      >
         <View style={styles.iconContainer}>
-          <Ionicons name={currentStepData.icon} size={52} color={primaryColor} />
+          <Ionicons name={currentStepData.icon} size={48} color={primaryColor} />
         </View>
 
         <Text style={styles.title}>{currentStepData.title}</Text>
         <Text style={styles.description}>{currentStepData.description}</Text>
-      </View>
+      </ScrollView>
 
       <View style={styles.footer}>
         <View style={styles.dotsContainer}>
@@ -193,20 +199,25 @@ const styles = StyleSheet.create({
     color: '#71717a',
     fontWeight: '500',
   },
-  content: {
+  scroll: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 40,
+    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    paddingBottom: 20,
   },
   iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: '#EFEFEF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -214,19 +225,22 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   title: {
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: '700',
     color: '#18181b',
     textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 32,
+    marginBottom: 12,
+    lineHeight: 28,
+    maxWidth: 400,
+    width: '100%',
   },
   description: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#71717a',
     textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 10,
+    lineHeight: 22,
+    maxWidth: 400,
+    width: '100%',
   },
   footer: {
     paddingHorizontal: 20,
@@ -235,7 +249,7 @@ const styles = StyleSheet.create({
   },
   dotsContainer: {
     flexDirection: 'row',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   dot: {
     width: 8,

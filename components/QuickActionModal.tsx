@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Modal,
   View,
   TouchableOpacity,
   StyleSheet,
   Platform,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +16,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { shareLines } from "@/lib/shareText";
 
+export type QuickActionModalMenuItem = {
+  id: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+};
+
 interface QuickActionModalProps {
   visible: boolean;
   onClose: () => void;
@@ -22,10 +30,12 @@ interface QuickActionModalProps {
   children: React.ReactNode;
   /** When set, header shows a share control that shares this text. */
   shareMessage?: string | null;
-  /** When set, header shows a calculator shortcut. */
+  /** When set, header may show a calculator shortcut (hidden if `menuItems` is set — use the tools menu). */
   onOpenCalculator?: () => void;
-  /** When set, header shows a converter shortcut. */
+  /** When set, header may show a converter shortcut (hidden if `menuItems` is set — use the tools menu). */
   onOpenConverter?: () => void;
+  /** Opens from header: switch to other tools (e.g. other modals, calculator). */
+  menuItems?: QuickActionModalMenuItem[];
 }
 
 /**
@@ -39,18 +49,25 @@ export default function QuickActionModal({
   shareMessage,
   onOpenCalculator,
   onOpenConverter,
+  menuItems,
 }: QuickActionModalProps) {
   const { t } = useLanguage();
   const backgroundColor = useThemeColor({}, "background");
+  const surfaceColor = useThemeColor({}, "surface");
   const textColor = useThemeColor({}, "text");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
   const borderColor = useThemeColor({}, "border");
   const primaryColor = useThemeColor({}, "primary");
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
 
   const trimmedShare = shareMessage?.trim();
   const canShare = Boolean(trimmedShare);
   const canOpenCalculator = Boolean(onOpenCalculator);
   const canOpenConverter = Boolean(onOpenConverter);
+  const canOpenToolsMenu = Boolean(menuItems && menuItems.length > 0);
+  /** These are listed in the tools menu — avoid duplicating them in the header. */
+  const showCalculatorShortcut = canOpenCalculator && !canOpenToolsMenu;
+  const showConverterShortcut = canOpenConverter && !canOpenToolsMenu;
 
   return (
     <Modal
@@ -104,7 +121,23 @@ export default function QuickActionModal({
               {title}
             </ThemedText>
             <View style={styles.headerActions}>
-              {canOpenConverter ? (
+              {canOpenToolsMenu ? (
+                <TouchableOpacity
+                  onPress={() => setToolsMenuOpen(true)}
+                  style={[
+                    styles.headerIconButton,
+                    {
+                      backgroundColor: hexToRgba(backgroundColor, 0.55),
+                      borderColor,
+                    },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("quick.toolsMenu")}
+                >
+                  <Ionicons name="apps-outline" size={20} color={primaryColor} />
+                </TouchableOpacity>
+              ) : null}
+              {showConverterShortcut ? (
                 <TouchableOpacity
                   onPress={onOpenConverter}
                   style={[
@@ -120,7 +153,7 @@ export default function QuickActionModal({
                   <Ionicons name="swap-horizontal-outline" size={20} color={primaryColor} />
                 </TouchableOpacity>
               ) : null}
-              {canOpenCalculator ? (
+              {showCalculatorShortcut ? (
                 <TouchableOpacity
                   onPress={onOpenCalculator}
                   style={[
@@ -152,7 +185,10 @@ export default function QuickActionModal({
                   <Ionicons name="share-outline" size={20} color={primaryColor} />
                 </TouchableOpacity>
               ) : null}
-              {!canShare && !canOpenCalculator && !canOpenConverter ? (
+              {!canShare &&
+              !showCalculatorShortcut &&
+              !showConverterShortcut &&
+              !canOpenToolsMenu ? (
                 <View style={styles.headerSpacer} />
               ) : null}
             </View>
@@ -160,6 +196,68 @@ export default function QuickActionModal({
           <View style={styles.body}>{children}</View>
         </View>
       </SafeAreaView>
+
+      <Modal
+        visible={toolsMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setToolsMenuOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.toolsMenuBackdrop}
+          activeOpacity={1}
+          onPress={() => setToolsMenuOpen(false)}
+        >
+          <View
+            style={[
+              styles.toolsMenuSheet,
+              {
+                backgroundColor: surfaceColor,
+                borderColor,
+              },
+            ]}
+            onStartShouldSetResponder={() => true}
+          >
+            <ThemedText
+              type="defaultSemiBold"
+              style={[styles.toolsMenuTitle, { color: textColor }]}
+            >
+              {t("quick.toolsMenu")}
+            </ThemedText>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {(menuItems ?? []).map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.toolsMenuRow,
+                    { borderBottomColor: hexToRgba(borderColor, 0.35) },
+                  ]}
+                  onPress={() => {
+                    setToolsMenuOpen(false);
+                    item.onPress();
+                  }}
+                >
+                  <Ionicons name={item.icon} size={22} color={primaryColor} />
+                  <ThemedText
+                    style={[styles.toolsMenuRowLabel, { color: textColor }]}
+                    numberOfLines={2}
+                  >
+                    {item.label}
+                  </ThemedText>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={textSecondaryColor}
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </Modal>
   );
 }
@@ -220,5 +318,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingTop: 0,
     backgroundColor: "transparent",
+  },
+  toolsMenuBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+    paddingBottom: Platform.OS === "ios" ? 28 : 20,
+    paddingHorizontal: 16,
+  },
+  toolsMenuSheet: {
+    maxHeight: "72%",
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingTop: 14,
+    paddingBottom: 8,
+    overflow: "hidden",
+  },
+  toolsMenuTitle: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    fontSize: 16,
+  },
+  toolsMenuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  toolsMenuRowLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

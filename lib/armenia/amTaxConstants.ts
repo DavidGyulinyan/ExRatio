@@ -38,6 +38,16 @@ export const AM_TAX_CONSTANTS = {
    * Real state benefits use caps, seniority, and fund rules — replace with official formulas when available.
    */
   MATERNITY_BENEFIT_RATE_OF_DAILY_GROSS: 1,
+  /**
+   * Illustrative extra calendar days added to the childbirth segment when «complicated birth» is selected.
+   * Verify against the RA Labor Code / current regulations before relying on this figure.
+   */
+  MATERNITY_COMPLICATED_BIRTH_EXTRA_CHILDBIRTH_DAYS: 14,
+  /**
+   * Per each child beyond the first in a single delivery (twins, triplets, …), added to the childbirth segment.
+   * Illustrative only — official rules may differ.
+   */
+  MATERNITY_EACH_ADDITIONAL_CHILD_EXTRA_CHILDBIRTH_DAYS: 10,
 
   GROSS_NET_TOLERANCE_AMD: 1,
   GROSS_NET_MAX_ITER: 80,

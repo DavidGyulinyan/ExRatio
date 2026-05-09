@@ -21,6 +21,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserDataService } from "@/lib/userDataService";
 import { FormField } from "@/constants/theme";
 import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
+import {
+  canonicalDecimalToDisplay,
+  displayDecimalToCanonical,
+  formatGroupedNumber,
+} from "@/lib/numberFormat";
 
 interface MultiCurrencyConverterProps {
   currenciesData: any;
@@ -54,7 +59,7 @@ export default function MultiCurrencyConverter({
   showAllTargets = false,
   onShareableMessageChange,
 }: MultiCurrencyConverterProps) {
-  const [amount, setAmount] = useState<string>("1");
+  const [amount, setAmount] = useState<string>("");
   const [fromCurrency, setFromCurrency] = useState<string>(
     fromCurrencyProp || ""
   );
@@ -247,13 +252,11 @@ export default function MultiCurrencyConverter({
     }
     const lines = [
       t("converter.multiCurrency.section"),
-      `${amt.toLocaleString()} ${fromCurrency}`,
+      `${formatGroupedNumber(amt, 6)} ${fromCurrency}`,
       ...conversionTargets.map((target) => {
         const v = conversions[target.currency];
         const formatted =
-          v !== undefined
-            ? v.toLocaleString(undefined, { maximumFractionDigits: 4 })
-            : "—";
+          v !== undefined ? formatGroupedNumber(v, 4) : "—";
         return `→ ${target.currency}: ${formatted}`;
       }),
     ];
@@ -290,7 +293,10 @@ export default function MultiCurrencyConverter({
           conversionTargets: savedTargets,
         } = parsedState ?? {};
 
-        if (savedAmount) setAmount(String(savedAmount));
+        if (savedAmount !== undefined && savedAmount !== null && savedAmount !== "") {
+          const n = Number(savedAmount);
+          if (Number.isFinite(n) && n !== 0) setAmount(String(savedAmount));
+        }
         if (savedFromCurrency && currencyList.includes(savedFromCurrency)) {
           setFromCurrency(savedFromCurrency);
         }
@@ -318,7 +324,10 @@ export default function MultiCurrencyConverter({
         const history = await UserDataService.getConverterHistory(1);
         if (history && history.length > 0) {
           const latestRecord = history[0];
-          if (latestRecord.amount) setAmount(latestRecord.amount.toString());
+          if (latestRecord.amount != null) {
+            const n = Number(latestRecord.amount);
+            if (Number.isFinite(n) && n !== 0) setAmount(String(latestRecord.amount));
+          }
           if (
             latestRecord.from_currency &&
             currencyList.includes(latestRecord.from_currency)
@@ -440,12 +449,15 @@ export default function MultiCurrencyConverter({
             );
 
             // Set state immediately, validation will happen when currencies are loaded
-            if (latestRecord.amount) {
-              setAmount(latestRecord.amount.toString());
-              console.log(
-                "✅ MultiCurrencyConverter: Set amount to:",
-                latestRecord.amount
-              );
+            if (latestRecord.amount != null) {
+              const n = Number(latestRecord.amount);
+              if (Number.isFinite(n) && n !== 0) {
+                setAmount(latestRecord.amount.toString());
+                console.log(
+                  "✅ MultiCurrencyConverter: Set amount to:",
+                  latestRecord.amount
+                );
+              }
             }
 
             if (latestRecord.from_currency) {
@@ -511,12 +523,15 @@ export default function MultiCurrencyConverter({
             });
 
             // Set state immediately, validation will happen when currencies are loaded
-            if (savedAmount) {
-              setAmount(savedAmount);
-              console.log(
-                "✅ MultiCurrencyConverter: Set amount to:",
-                savedAmount
-              );
+            if (savedAmount !== undefined && savedAmount !== null && savedAmount !== "") {
+              const n = Number(savedAmount);
+              if (Number.isFinite(n) && n !== 0) {
+                setAmount(String(savedAmount));
+                console.log(
+                  "✅ MultiCurrencyConverter: Set amount to:",
+                  savedAmount
+                );
+              }
             }
 
             if (savedFromCurrency) {
@@ -602,8 +617,11 @@ export default function MultiCurrencyConverter({
               setConversionTargets(targetsWithIds);
             }
 
-            if (latestRecord.amount) {
-              setAmount(latestRecord.amount.toString());
+            if (latestRecord.amount != null) {
+              const n = Number(latestRecord.amount);
+              if (Number.isFinite(n) && n !== 0) {
+                setAmount(latestRecord.amount.toString());
+              }
             }
 
             if (latestRecord.from_currency) {
@@ -648,8 +666,9 @@ export default function MultiCurrencyConverter({
               setConversionTargets(savedTargets);
             }
 
-            if (savedAmount) {
-              setAmount(savedAmount);
+            if (savedAmount !== undefined && savedAmount !== null && savedAmount !== "") {
+              const n = Number(savedAmount);
+              if (Number.isFinite(n) && n !== 0) setAmount(String(savedAmount));
             }
 
             if (savedFromCurrency) {
@@ -904,10 +923,10 @@ export default function MultiCurrencyConverter({
                 },
                 styles.amountInput,
               ]}
-              value={amount}
-              onChangeText={setAmount}
+              value={canonicalDecimalToDisplay(amount)}
+              onChangeText={(text) => setAmount(displayDecimalToCanonical(text))}
               keyboardType="numeric"
-              placeholder={t("converter.enterAmount")}
+              placeholder="0"
               placeholderTextColor={textSecondaryColor}
             />
           </View>
@@ -1053,8 +1072,9 @@ export default function MultiCurrencyConverter({
                                 styles.conversionAmount,
                               ]}
                             >
-                              {conversions[target.currency]?.toFixed(4) ||
-                                "---"}
+                              {conversions[target.currency] !== undefined
+                                ? formatGroupedNumber(conversions[target.currency]!, 4)
+                                : "---"}
                             </ThemedText>
                           </View>
 

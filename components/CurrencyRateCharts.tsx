@@ -17,6 +17,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import exchangeRateService, {
   HistoricalRateData,
 } from "@/lib/exchangeRateService";
+import { formatGroupedNumber } from "@/lib/numberFormat";
 
 type Props = {
   currencies: string[];
@@ -38,11 +39,9 @@ function compactLabels(dates: string[], maxLabels: number): string[] {
 
 function formatRate(n: number): string {
   if (!Number.isFinite(n)) return "—";
-  if (n >= 100) return n.toFixed(2);
-  if (n >= 10) return n.toFixed(3);
-  if (n >= 1) return n.toFixed(4);
-  if (n >= 0.1) return n.toFixed(5);
-  return n.toPrecision(6);
+  if (n < 0.1) return formatGroupedNumber(Number(n.toPrecision(6)), 10);
+  const maxFrac = n >= 100 ? 2 : n >= 10 ? 3 : n >= 1 ? 4 : 5;
+  return formatGroupedNumber(n, maxFrac);
 }
 
 export default function CurrencyRateCharts({
@@ -181,7 +180,7 @@ export default function CurrencyRateCharts({
     if (changeAbs !== undefined && first !== undefined) {
       const pctPart =
         changePct !== undefined
-          ? ` (${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%)`
+          ? ` (${changePct >= 0 ? "+" : ""}${formatGroupedNumber(changePct, 2)}%)`
           : "";
       lines.push(`${t("chart.rateChange")}: ${formatRate(changeAbs)}${pctPart}`);
     }
@@ -364,7 +363,7 @@ export default function CurrencyRateCharts({
               {changeAbs === undefined
                 ? "—"
                 : `${changeAbs >= 0 ? "+" : ""}${formatRate(changeAbs)}${
-                    changePct === undefined ? "" : ` (${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%)`
+                    changePct === undefined ? "" : ` (${changePct >= 0 ? "+" : ""}${formatGroupedNumber(changePct, 2)}%)`
                   }`}
             </ThemedText>
           </View>

@@ -8,6 +8,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useSavedRates } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDateDDMMYY } from "@/lib/dateFormat";
+import { formatGroupedNumber } from "@/lib/numberFormat";
 
 interface SavedRate {
   id: string;
@@ -86,7 +87,7 @@ export default function SavedRates({
       t("saved.title"),
       ...list.map(
         (r) =>
-          `• ${r.from_currency} → ${r.to_currency}: ${Number(r.rate).toFixed(4)}`
+          `• ${r.from_currency} → ${r.to_currency}: ${formatGroupedNumber(Number(r.rate), 4)}`
       ),
     ];
     onShareableMessageChange(lines.join("\n"));
@@ -177,7 +178,7 @@ export default function SavedRates({
           <CurrencyFlag currency={rate.to_currency} size={20} />
         </View>
         <ThemedText style={[{ color: primaryColor }, styles.rateValue]}>
-          {rate.rate.toFixed(4)}
+          {formatGroupedNumber(rate.rate, 4)}
         </ThemedText>
         <ThemedText style={[{ color: textSecondaryColor }, styles.savedRateDate]}>
           {formatDateDDMMYY(rate.created_at)}

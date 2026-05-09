@@ -16,7 +16,13 @@ import { useCalculatorHistory } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { shareLines } from "@/lib/shareText";
+import type { QuickActionModalMenuItem } from "@/components/QuickActionModal";
 import * as Haptics from "expo-haptics";
+import {
+  formatCalculatorMainDisplay,
+  formatEmbeddedNumericTokens,
+  formatGroupedNumber,
+} from "@/lib/numberFormat";
 
 type CalculatorMode = "basic" | "advanced";
 
@@ -27,6 +33,8 @@ interface MathCalculatorProps {
   onAddToConverter?: (result: number) => void;
   autoCloseAfterCalculation?: boolean;
   inModal?: boolean; // Hide header when used inside DashboardModal
+  /** Extra entries appended under the in-calculator menu (e.g. other app modals). */
+  toolsMenuItems?: QuickActionModalMenuItem[];
 }
 
 const LOAN_HISTORY_ARROW = "\u2192";
@@ -67,6 +75,7 @@ export default function MathCalculator({
   onAddToConverter,
   autoCloseAfterCalculation = true,
   inModal = false,
+  toolsMenuItems,
 }: MathCalculatorProps) {
   const { user } = useAuth();
   const { calculatorHistory: supabaseHistory, saveCalculation, clearAllCalculations, loading: historyLoading } = useCalculatorHistory();
@@ -648,20 +657,24 @@ export default function MathCalculator({
   };
 
   const getEquationPreviewText = () => {
-    if (calculationComplete) return equation;
+    if (calculationComplete) {
+      return formatEmbeddedNumericTokens(equation, roundingDecimalPlaces);
+    }
     if (equation && operation && !waitingForOperand && previousValue !== null) {
       const currentValue = parseFloat(display);
       if (!isNaN(currentValue)) {
         const previewResult = calculate(previousValue, currentValue, operation);
         const result = parseFloat(previewResult.toFixed(roundingDecimalPlaces));
-        return `${equation} = ${result}`;
+        return `${formatEmbeddedNumericTokens(equation, roundingDecimalPlaces)} = ${formatGroupedNumber(result, roundingDecimalPlaces)}`;
       }
     }
-    if (equation && (operation || waitingForOperand)) return equation;
+    if (equation && (operation || waitingForOperand)) {
+      return formatEmbeddedNumericTokens(equation, roundingDecimalPlaces);
+    }
     return "";
   };
 
-  const getMainValueText = () => display;
+  const getMainValueText = () => formatCalculatorMainDisplay(display);
 
   const getDisplayFontSize = () => {
     const textLength = getMainValueText().length;
@@ -811,7 +824,10 @@ export default function MathCalculator({
             displayHistory.map((calc, index) => (
               <View key={index}>
                 <Text style={[styles.historyItem, { color: textColor, borderBottomColor: borderColor }]}>
-                  {typeof calc === "string" ? calc : String(calc ?? "")}
+                  {formatEmbeddedNumericTokens(
+                    typeof calc === "string" ? calc : String(calc ?? ""),
+                    roundingDecimalPlaces
+                  )}
                 </Text>
               </View>
             ))
@@ -967,6 +983,19 @@ export default function MathCalculator({
                   {tWithParams("calculator.rounding", { decimals: roundingDecimalPlaces })}
                 </Text>
               </TouchableOpacity>
+              {(toolsMenuItems ?? []).map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setShowQuickMenu(false);
+                    item.onPress();
+                  }}
+                >
+                  <Ionicons name={item.icon} size={18} color={primaryColor} />
+                  <Text style={[styles.menuItemText, { color: textColor }]}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </TouchableOpacity>
         </Modal>

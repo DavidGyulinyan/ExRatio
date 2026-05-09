@@ -6,43 +6,39 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
+  Switch,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import QuickActionModal from "@/components/QuickActionModal";
+import QuickActionModal, {
+  type QuickActionModalMenuItem,
+} from "@/components/QuickActionModal";
 import { ThemedText } from "@/components/themed-text";
-import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import {
+  defaultLoanCalculatorDraft,
+  loadLoanCalculatorDraft,
+  saveLoanCalculatorDraft,
+  type LoanCalculatorDraft,
+} from "@/lib/amScreensDraft";
+import { shareLines } from "@/lib/shareText";
+import {
+  addThousandsDotsFromDigitString,
+  canonicalDecimalToDisplay,
+  displayDecimalToCanonical,
+  formatAmdSuffix,
+  formatGroupedNumber,
+  parseGroupedNumericInput,
+  sanitizeIntegerDigits,
+} from "@/lib/numberFormat";
 
-const LOAN_HISTORY_ARROW = "\u2192";
+function formatAmd(value: number): string {
+  return formatAmdSuffix(value);
+}
 
-function formatCalculatorHistoryDisplay(record: {
-  expression?: unknown;
-  result?: unknown;
-  calculation_type?: string | null;
-}): string {
-  const rawExpr = record?.expression;
-  const expression =
-    typeof rawExpr === "string"
-      ? rawExpr
-      : rawExpr != null && rawExpr !== ""
-        ? String(rawExpr)
-        : "Unknown calculation";
-  const trimExpr = expression.trim() || "Unknown calculation";
-  const type = record?.calculation_type;
-
-  if (type === "loan" || trimExpr.includes(LOAN_HISTORY_ARROW)) {
-    return trimExpr;
-  }
-  if (trimExpr.includes("=")) {
-    return trimExpr;
-  }
-  const r = record?.result;
-  if (r != null && r !== "") {
-    return `${trimExpr} = ${String(r)}`;
-  }
-  return trimExpr;
+function parseNum(raw: string): number | null {
+  return parseGroupedNumericInput(raw);
 }
 
 function LoanField({
@@ -55,6 +51,7 @@ function LoanField({
   textColor,
   textSecondaryColor,
   accessibilityLabel,
+  numberGrouping,
 }: {
   label: string;
   value: string;
@@ -65,7 +62,27 @@ function LoanField({
   textColor: string;
   textSecondaryColor: string;
   accessibilityLabel?: string;
+  numberGrouping?: "integer" | "decimal";
 }) {
+  const displayValue =
+    numberGrouping === "integer"
+      ? value === ""
+        ? ""
+        : addThousandsDotsFromDigitString(sanitizeIntegerDigits(value))
+      : numberGrouping === "decimal"
+        ? canonicalDecimalToDisplay(value)
+        : value;
+
+  const handleChange = (text: string) => {
+    if (numberGrouping === "integer") {
+      onChangeText(sanitizeIntegerDigits(text));
+    } else if (numberGrouping === "decimal") {
+      onChangeText(displayDecimalToCanonical(text));
+    } else {
+      onChangeText(text);
+    }
+  };
+
   return (
     <View style={styles.fieldBlock}>
       <ThemedText
@@ -77,8 +94,8 @@ function LoanField({
         {label}
       </ThemedText>
       <TextInput
-        value={value}
-        onChangeText={onChangeText}
+        value={displayValue}
+        onChangeText={handleChange}
         keyboardType={keyboardType ?? "decimal-pad"}
         placeholder="0"
         placeholderTextColor={textSecondaryColor}
@@ -139,61 +156,64 @@ export interface LoanCalculatorProps {
   visible: boolean;
   onClose: () => void;
   onResult?: (monthlyPayment: number) => void;
+  menuItems?: QuickActionModalMenuItem[];
 }
 
-export default function LoanCalculator({ visible, onClose, onResult }: LoanCalculatorProps) {
-  const { user } = useAuth();
-  const { t, tWithParams } = useLanguage();
+export default function LoanCalculator({
+  visible,
+  onClose,
+  onResult,
+  menuItems,
+}: LoanCalculatorProps) {
+  const { t } = useLanguage();
   const surfaceColor = useThemeColor({}, "surface");
-  const surfaceSecondaryColor = useThemeColor({}, "surfaceSecondary");
   const textColor = useThemeColor({}, "text");
   const textSecondaryColor = useThemeColor({}, "textSecondary");
   const borderColor = useThemeColor({}, "border");
   const primaryColor = useThemeColor({}, "primary");
-  const errorColor = useThemeColor({}, "error");
-  const loanButtonLabelColor = useThemeColor({}, "textInverse");
 
-  // Defaults (same idea as deposit screen): prefill sensible example values.
-  const [loanPrincipal, setLoanPrincipal] = useState("5000000");
-  const [loanRateAnnual, setLoanRateAnnual] = useState("12");
-  const [loanTermMonths, setLoanTermMonths] = useState("36");
-  const [loanError, setLoanError] = useState<string | null>(null);
-  const [loanMonthly, setLoanMonthly] = useState<number | null>(null);
-  const [loanTotalInterest, setLoanTotalInterest] = useState<number | null>(null);
-  const [loanTotalPaid, setLoanTotalPaid] = useState<number | null>(null);
-  const [roundingDecimalPlaces] = useState(2);
+  const [draft, setDraft] = useState<LoanCalculatorDraft>(defaultLoanCalculatorDraft);
+  const [draftHydrated, setDraftHydrated] = useState(false);
 
-  const roundForDisplay = (n: number) => parseFloat(n.toFixed(roundingDecimalPlaces));
+  useEffect(() => {
+    let cancelled = false;
+    void loadLoanCalculatorDraft().then((d) => {
+      if (!cancelled) {
+        setDraft(d);
+        setDraftHydrated(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const parseLoanNumber = (raw: string) => {
-    const s = raw.replace(/\s/g, "").replace(/,/g, "");
-    const n = parseFloat(s);
-    return Number.isFinite(n) ? n : NaN;
-  };
+  useEffect(() => {
+    if (!draftHydrated) return;
+    const tm = setTimeout(() => void saveLoanCalculatorDraft(draft), 400);
+    return () => clearTimeout(tm);
+  }, [draft, draftHydrated]);
 
-  const parseLoanMonths = (raw: string) => {
-    const s = raw.replace(/\s/g, "").replace(/,/g, "");
-    const n = parseInt(s, 10);
-    return Number.isFinite(n) ? n : NaN;
-  };
+  const { principalStr, rateStr, monthsStr, yearsMode, yearsStr } = draft;
 
-  const computeLoan = async () => {
-    setLoanError(null);
-    const principal = parseLoanNumber(loanPrincipal);
-    const annualPct = parseLoanNumber(loanRateAnnual);
-    const months = parseLoanMonths(loanTermMonths);
-
-    if (!Number.isFinite(principal) || principal <= 0) {
-      setLoanError(t("calculator.loanErrPrincipal"));
-      return;
+  const result = useMemo(() => {
+    const principal = parseNum(principalStr);
+    const annualPct = parseNum(rateStr);
+    if (principal === null || annualPct === null || principal <= 0 || annualPct < 0) {
+      return null;
     }
-    if (!Number.isFinite(annualPct) || annualPct < 0) {
-      setLoanError(t("calculator.loanErrRate"));
-      return;
-    }
-    if (!Number.isFinite(months) || months <= 0) {
-      setLoanError(t("calculator.loanErrTerm"));
-      return;
+
+    let months: number;
+    if (yearsMode) {
+      const y = parseNum(yearsStr);
+      if (y === null || y < 0) return null;
+      months = Math.max(0, Math.round(y * 12));
+      if (months <= 0) return null;
+    } else {
+      const m = parseNum(monthsStr);
+      if (m === null || m <= 0) return null;
+      months = Math.floor(m);
+      if (months <= 0) return null;
     }
 
     const monthlyRate = annualPct / 100 / 12;
@@ -209,59 +229,38 @@ export default function LoanCalculator({ visible, onClose, onResult }: LoanCalcu
     const totalInterestRaw = totalPaidRaw - principal;
 
     if (!Number.isFinite(payment) || payment <= 0 || !Number.isFinite(totalPaidRaw)) {
-      setLoanError(t("calculator.loanErrRate"));
-      return;
-    }
-
-    const paymentR = roundForDisplay(payment);
-    const interestR = roundForDisplay(totalInterestRaw);
-    const paidR = roundForDisplay(totalPaidRaw);
-
-    setLoanMonthly(paymentR);
-    setLoanTotalInterest(interestR);
-    setLoanTotalPaid(paidR);
-
-    const historyLine = tWithParams("calculator.loanHistoryLine", {
-      principal: String(roundForDisplay(principal)),
-      rate: String(roundForDisplay(annualPct)),
-      months: String(months),
-      payment: String(paymentR),
-    });
-
-    if (onResult) {
-      onResult(paymentR);
-    }
-  };
-
-  const loanShareMessage = useMemo(() => {
-    if (
-      loanMonthly === null ||
-      loanTotalInterest === null ||
-      loanTotalPaid === null
-    ) {
       return null;
     }
+
+    return {
+      payment,
+      totalInterest: totalInterestRaw,
+      totalPaid: totalPaidRaw,
+      months,
+    };
+  }, [principalStr, rateStr, monthsStr, yearsMode, yearsStr]);
+
+  useEffect(() => {
+    if (result && onResult) onResult(result.payment);
+  }, [result, onResult]);
+
+  const loanShareMessage = useMemo(() => {
+    if (!result) return null;
+    const rateNum = parseNum(rateStr);
     return [
       t("calculator.loanTitle"),
-      `${t("calculator.loanPrincipal")}: ${loanPrincipal}`,
-      `${t("calculator.loanAnnualRate")}: ${loanRateAnnual}%`,
-      `${t("calculator.loanTermMonths")}: ${loanTermMonths}`,
-      `${t("calculator.loanMonthlyPayment")}: ${loanMonthly}`,
-      `${t("calculator.loanTotalInterest")}: ${loanTotalInterest}`,
-      `${t("calculator.loanTotalPaid")}: ${loanTotalPaid}`,
+      `${t("calculator.loanPrincipal")}: ${formatAmd(parseNum(principalStr) ?? 0)}`,
+      `${t("calculator.loanAnnualRate")}: ${rateNum != null ? formatGroupedNumber(rateNum, 6) : rateStr}%`,
+      `${t("calculator.loanTermMonths")}: ${formatGroupedNumber(result.months, 0)}`,
+      `${t("calculator.loanMonthlyPayment")}: ${formatAmd(result.payment)}`,
+      `${t("calculator.loanTotalInterest")}: ${formatAmd(result.totalInterest)}`,
+      `${t("calculator.loanTotalPaid")}: ${formatAmd(result.totalPaid)}`,
     ].join("\n");
-  }, [
-    loanMonthly,
-    loanTotalInterest,
-    loanTotalPaid,
-    loanPrincipal,
-    loanRateAnnual,
-    loanTermMonths,
-    t,
-  ]);
+  }, [result, principalStr, rateStr, t]);
 
-  const hasResults =
-    loanMonthly !== null && loanTotalInterest !== null && loanTotalPaid !== null;
+  const patch = (partial: Partial<LoanCalculatorDraft>) => {
+    setDraft((d) => ({ ...d, ...partial }));
+  };
 
   return (
     <QuickActionModal
@@ -269,6 +268,7 @@ export default function LoanCalculator({ visible, onClose, onResult }: LoanCalcu
       onClose={onClose}
       title={t("calculator.loanTitle")}
       shareMessage={loanShareMessage}
+      menuItems={menuItems}
     >
       <ScrollView
         style={{ flex: 1, backgroundColor: "transparent" }}
@@ -292,73 +292,91 @@ export default function LoanCalculator({ visible, onClose, onResult }: LoanCalcu
             {t("calculator.loanTitle")}
           </ThemedText>
 
+          <TouchableOpacity
+            onPress={() =>
+              patch({
+                principalStr: "",
+                rateStr: "",
+                monthsStr: "",
+                yearsStr: "",
+              })
+            }
+            style={[styles.clearAllRow, { borderColor }]}
+            accessibilityRole="button"
+          >
+            <Ionicons name="trash-outline" size={18} color={primaryColor} />
+            <ThemedText type="defaultSemiBold" style={{ color: primaryColor }}>
+              {t("amFinance.clearAllFields")}
+            </ThemedText>
+          </TouchableOpacity>
+
           <LoanField
             label={t("calculator.loanPrincipal")}
-            value={loanPrincipal}
-            onChangeText={(v) => {
-              setLoanPrincipal(v);
-              setLoanError(null);
-            }}
+            value={principalStr}
+            onChangeText={(principalStr) => patch({ principalStr })}
             borderColor={borderColor}
             surfaceColor={surfaceColor}
             textColor={textColor}
             textSecondaryColor={textSecondaryColor}
             keyboardType="decimal-pad"
             accessibilityLabel={t("calculator.loanPrincipal")}
+            numberGrouping="integer"
           />
           <LoanField
             label={t("calculator.loanAnnualRate")}
-            value={loanRateAnnual}
-            onChangeText={(v) => {
-              setLoanRateAnnual(v);
-              setLoanError(null);
-            }}
+            value={rateStr}
+            onChangeText={(rateStr) => patch({ rateStr })}
             borderColor={borderColor}
             surfaceColor={surfaceColor}
             textColor={textColor}
             textSecondaryColor={textSecondaryColor}
             keyboardType="decimal-pad"
             accessibilityLabel={t("calculator.loanAnnualRate")}
-          />
-          <LoanField
-            label={t("calculator.loanTermMonths")}
-            value={loanTermMonths}
-            onChangeText={(v) => {
-              setLoanTermMonths(v);
-              setLoanError(null);
-            }}
-            borderColor={borderColor}
-            surfaceColor={surfaceColor}
-            textColor={textColor}
-            textSecondaryColor={textSecondaryColor}
-            keyboardType="number-pad"
-            accessibilityLabel={t("calculator.loanTermMonths")}
+            numberGrouping="decimal"
           />
 
-          <ThemedText type="caption" style={[styles.hint, { color: textSecondaryColor }]}>
-            {t("calculator.loanDisplayHint")}
-          </ThemedText>
-
-          {loanError ? (
-            <ThemedText style={[styles.errorText, { color: errorColor }]}>{loanError}</ThemedText>
-          ) : null}
-
-          <TouchableOpacity
-            style={[styles.calculateButton, { backgroundColor: primaryColor }]}
-            onPress={() => void computeLoan()}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t("calculator.loanCalculate")}
-          >
+          <View style={styles.switchRow}>
             <ThemedText
-              type="defaultSemiBold"
-              style={{ color: loanButtonLabelColor, fontSize: 16 }}
+              style={[{ color: textColor }, styles.switchLabelText]}
+              numberOfLines={4}
+              ellipsizeMode="tail"
             >
-              {t("calculator.loanCalculate")}
+              {yearsMode ? t("amFinance.deposit.useYears") : t("amFinance.deposit.useMonths")}
             </ThemedText>
-          </TouchableOpacity>
+            <Switch
+              style={styles.switchControl}
+              value={yearsMode}
+              onValueChange={(yearsMode) => patch({ yearsMode })}
+            />
+          </View>
 
-          {hasResults ? (
+          {yearsMode ? (
+            <LoanField
+              label={t("amFinance.deposit.years")}
+              value={yearsStr}
+              onChangeText={(yearsStr) => patch({ yearsStr })}
+              borderColor={borderColor}
+              surfaceColor={surfaceColor}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+              keyboardType="decimal-pad"
+              numberGrouping="decimal"
+            />
+          ) : (
+            <LoanField
+              label={t("amFinance.deposit.months")}
+              value={monthsStr}
+              onChangeText={(monthsStr) => patch({ monthsStr })}
+              borderColor={borderColor}
+              surfaceColor={surfaceColor}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+              keyboardType="number-pad"
+              numberGrouping="integer"
+            />
+          )}
+
+          {result ? (
             <>
               <ThemedText
                 type="defaultSemiBold"
@@ -371,7 +389,7 @@ export default function LoanCalculator({ visible, onClose, onResult }: LoanCalcu
               <View style={styles.resultsBlock}>
                 <LoanRowKV
                   label={t("calculator.loanMonthlyPayment")}
-                  value={String(loanMonthly)}
+                  value={formatAmd(result.payment)}
                   textColor={textColor}
                   textSecondaryColor={textSecondaryColor}
                   emphasizeValue
@@ -379,13 +397,13 @@ export default function LoanCalculator({ visible, onClose, onResult }: LoanCalcu
                 />
                 <LoanRowKV
                   label={t("calculator.loanTotalInterest")}
-                  value={String(loanTotalInterest)}
+                  value={formatAmd(result.totalInterest)}
                   textColor={textColor}
                   textSecondaryColor={textSecondaryColor}
                 />
                 <LoanRowKV
                   label={t("calculator.loanTotalPaid")}
-                  value={String(loanTotalPaid)}
+                  value={formatAmd(result.totalPaid)}
                   textColor={textColor}
                   textSecondaryColor={textSecondaryColor}
                 />
@@ -393,8 +411,31 @@ export default function LoanCalculator({ visible, onClose, onResult }: LoanCalcu
               <ThemedText type="caption" style={[styles.footnote, { color: textSecondaryColor }]}>
                 {t("calculator.loanFootnote")}
               </ThemedText>
+              <TouchableOpacity
+                style={[styles.shareRow, { marginTop: 14 }]}
+                onPress={() =>
+                  void shareLines([
+                    t("calculator.loanTitle"),
+                    `${t("calculator.loanMonthlyPayment")}: ${formatAmd(result.payment)}`,
+                    `${t("calculator.loanTotalPaid")}: ${formatAmd(result.totalPaid)}`,
+                  ])
+                }
+              >
+                <Ionicons name="share-outline" size={20} color={primaryColor} />
+                <ThemedText
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                  style={[styles.shareRowLabel, { color: primaryColor, fontWeight: "600" }]}
+                >
+                  {t("amFinance.shareSummary")}
+                </ThemedText>
+              </TouchableOpacity>
             </>
-          ) : null}
+          ) : (
+            <ThemedText style={{ color: textSecondaryColor, marginTop: 4 }}>
+              {t("amFinance.errors.invalid")}
+            </ThemedText>
+          )}
         </View>
       </ScrollView>
     </QuickActionModal>
@@ -421,6 +462,18 @@ const styles = StyleSheet.create({
     fontSize: 17,
     marginBottom: 14,
   },
+  clearAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    marginBottom: 12,
+    marginTop: -6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   fieldBlock: {
     marginBottom: 14,
   },
@@ -435,20 +488,21 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === "ios" ? 14 : 12,
     fontSize: 16,
   },
-  hint: {
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: 12,
-    lineHeight: 18,
+    gap: 12,
   },
-  errorText: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 8,
+  switchLabelText: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    paddingTop: Platform.OS === "ios" ? 2 : 0,
+    paddingRight: 4,
   },
-  calculateButton: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 8,
+  switchControl: {
+    flexShrink: 0,
   },
   resultsHeading: {
     marginTop: 8,
@@ -480,5 +534,15 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontStyle: "italic",
   },
-  // History UI removed for simpler UX (can be re-added later if needed)
+  shareRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    maxWidth: "100%",
+  },
+  shareRowLabel: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
 });

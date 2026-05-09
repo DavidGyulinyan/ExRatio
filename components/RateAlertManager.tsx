@@ -23,6 +23,7 @@ import { getAsyncStorage } from "@/lib/storage";
 import { FormField } from "@/constants/theme";
 import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
 import { formatDateDDMMYY } from "@/lib/dateFormat";
+import { formatGroupedNumber } from "@/lib/numberFormat";
 
 interface RateAlert {
   id: string;
@@ -146,8 +147,8 @@ export default function RateAlertManager({
             tWithParams('rateAlerts.conditionAlreadyMetMessage', {
               fromCurrency: formData.fromCurrency,
               toCurrency: formData.toCurrency,
-              currentRate: currentRate.toFixed(4),
-              targetRate: targetRate.toFixed(4),
+              currentRate: formatGroupedNumber(currentRate, 4),
+              targetRate: formatGroupedNumber(targetRate, 4),
               condition: t(`rateAlerts.direction.${formData.direction}`)
             }),
             [
@@ -454,7 +455,7 @@ export default function RateAlertManager({
                 <View style={styles.alertRow}>
                   <ThemedText style={[{ color: textSecondaryColor }, styles.alertLabel]}>{t('rateAlerts.target')}</ThemedText>
                   <ThemedText style={[{ color: textColor }, styles.alertValue]}>
-                    {t(`rateAlerts.direction.${alert.condition}`)} {alert.target_rate.toFixed(6)}
+                    {t(`rateAlerts.direction.${alert.condition}`)} {formatGroupedNumber(alert.target_rate, 6)}
                   </ThemedText>
                 </View>
                 <View style={styles.alertRow}>
