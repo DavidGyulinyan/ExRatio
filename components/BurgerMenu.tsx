@@ -28,6 +28,7 @@ export type BurgerMenuQuickActions = {
   /** Opens RA finance modal on the paid-leave / vacation-pay screen. */
   openVacationCalculator?: () => void;
   openArmeniaFinance?: () => void;
+  openArmeniaTransport?: () => void;
 };
 
 interface BurgerMenuProps {
@@ -154,6 +155,16 @@ export default function BurgerMenu({ style, quickActions }: BurgerMenuProps) {
                 title: t('quick.action.armeniaFinance'),
                 icon: 'flag-outline' as const,
                 onPress: () => closeThen(quickActions.openArmeniaFinance!),
+              },
+            ]
+          : []),
+        ...(quickActions.openArmeniaTransport
+          ? [
+              {
+                id: 'qa-am-transport',
+                title: t('quick.action.amTransport'),
+                icon: 'car-sport-outline' as const,
+                onPress: () => closeThen(quickActions.openArmeniaTransport!),
               },
             ]
           : []),

@@ -3,5 +3,7 @@ export * from "./amPayroll";
 export * from "./amPaidLeave";
 export * from "./amMaternity";
 export * from "./amDeposit";
+export * from "./amVehicleCustoms";
+export * from "./amVehicleSaleTax";
 export * from "./amFreelanceTaxConstants";
 export * from "./amFreelanceTaxes";

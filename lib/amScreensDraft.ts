@@ -36,6 +36,23 @@ export type AmFinanceFormsDraft = {
     contribStr: string;
     taxOnProfit: boolean;
   };
+  vehicleCustoms: {
+    valueStr: string;
+    engineCcStr: string;
+    /** Model / release calendar year (e.g. 2019). */
+    releaseYearStr: string;
+    isElectric: boolean;
+  };
+  /** Vehicle sale — income tax worksheet (AMD, years, power). */
+  vehicleDeal: {
+    acquisitionYearStr: string;
+    saleYearStr: string;
+    acquisitionStr: string;
+    importStr: string;
+    salePriceStr: string;
+    powerStr: string;
+    powerUnit: "hp" | "kw";
+  };
 };
 
 export type AmFreelanceFormsDraft = {
@@ -103,6 +120,21 @@ export function defaultAmFinanceDraft(): AmFinanceFormsDraft {
       contribStr: "",
       taxOnProfit: true,
     },
+    vehicleCustoms: {
+      valueStr: "",
+      engineCcStr: "2",
+      releaseYearStr: String(new Date().getFullYear()),
+      isElectric: false,
+    },
+    vehicleDeal: {
+      acquisitionYearStr: "",
+      saleYearStr: String(new Date().getFullYear()),
+      acquisitionStr: "",
+      importStr: "",
+      salePriceStr: "",
+      powerStr: "",
+      powerUnit: "hp",
+    },
   };
 }
 
@@ -163,6 +195,55 @@ function mergeFinance(
     },
     salary: { ...base.salary, ...o.salary },
     deposit: { ...base.deposit, ...o.deposit },
+    vehicleCustoms: {
+      ...base.vehicleCustoms,
+      ...o.vehicleCustoms,
+      isElectric:
+        typeof o.vehicleCustoms?.isElectric === "boolean"
+          ? o.vehicleCustoms.isElectric
+          : base.vehicleCustoms.isElectric,
+      engineCcStr:
+        o.vehicleCustoms?.engineCcStr !== undefined && o.vehicleCustoms?.engineCcStr !== null
+          ? String(o.vehicleCustoms.engineCcStr)
+          : base.vehicleCustoms.engineCcStr,
+      releaseYearStr:
+        o.vehicleCustoms?.releaseYearStr !== undefined && o.vehicleCustoms?.releaseYearStr !== null
+          ? String(o.vehicleCustoms.releaseYearStr)
+          : base.vehicleCustoms.releaseYearStr,
+    },
+    vehicleDeal: {
+      ...base.vehicleDeal,
+      ...o.vehicleDeal,
+      acquisitionYearStr:
+        o.vehicleDeal?.acquisitionYearStr !== undefined &&
+        o.vehicleDeal?.acquisitionYearStr !== null
+          ? String(o.vehicleDeal.acquisitionYearStr)
+          : base.vehicleDeal.acquisitionYearStr,
+      saleYearStr:
+        o.vehicleDeal?.saleYearStr !== undefined && o.vehicleDeal?.saleYearStr !== null
+          ? String(o.vehicleDeal.saleYearStr)
+          : base.vehicleDeal.saleYearStr,
+      acquisitionStr:
+        o.vehicleDeal?.acquisitionStr !== undefined && o.vehicleDeal?.acquisitionStr !== null
+          ? String(o.vehicleDeal.acquisitionStr)
+          : base.vehicleDeal.acquisitionStr,
+      importStr:
+        o.vehicleDeal?.importStr !== undefined && o.vehicleDeal?.importStr !== null
+          ? String(o.vehicleDeal.importStr)
+          : base.vehicleDeal.importStr,
+      salePriceStr:
+        o.vehicleDeal?.salePriceStr !== undefined && o.vehicleDeal?.salePriceStr !== null
+          ? String(o.vehicleDeal.salePriceStr)
+          : base.vehicleDeal.salePriceStr,
+      powerStr:
+        o.vehicleDeal?.powerStr !== undefined && o.vehicleDeal?.powerStr !== null
+          ? String(o.vehicleDeal.powerStr)
+          : base.vehicleDeal.powerStr,
+      powerUnit:
+        o.vehicleDeal?.powerUnit === "kw" || o.vehicleDeal?.powerUnit === "hp"
+          ? o.vehicleDeal.powerUnit
+          : base.vehicleDeal.powerUnit,
+    },
   };
 }
 

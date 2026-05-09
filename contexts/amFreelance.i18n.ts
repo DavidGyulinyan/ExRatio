@@ -109,7 +109,7 @@ export const AM_FREELANCE_EN: Record<string, string> = {
 };
 
 export const AM_FREELANCE_HY: Record<string, string> = {
-  "amFreelance.sectionTitle": "ՀՀ Ֆրիլանս և Հարկեր",
+  "amFreelance.sectionTitle": "Ֆրիլանս և Հարկեր",
   "amFreelance.disclaimer":
     "Միայն մոտավոր գնահատական։ Ռեժիմները/կանոնները տարբեր են — ստուգեք օրենքով կամ հարկային խորհրդատուով։",
   "amFreelance.back": "Հետ",

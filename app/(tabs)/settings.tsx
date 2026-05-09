@@ -805,7 +805,7 @@ Capital चुनने के लिए धन्यवाद!`
             {
               key: 'enabled',
               label: t('settings.enableNotifications'),
-              icon: (notificationSettings.enabled ? 'notifications-outline' : 'notifications-off-outline') as const,
+              icon: notificationSettings.enabled ? ('notifications-outline' as const) : ('notifications-off-outline' as const),
             },
             { key: 'sound', label: t('settings.sound'), icon: 'volume-high-outline' as const },
             { key: 'vibration', label: t('settings.vibration'), icon: 'phone-portrait-outline' as const },

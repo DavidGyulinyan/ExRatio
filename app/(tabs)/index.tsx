@@ -12,6 +12,7 @@ import RateAlertManager from "@/components/RateAlertManager";
 import MathCalculator from "@/components/MathCalculator";
 import LoanCalculator from "@/components/LoanCalculator";
 import OnboardingGuide from "@/components/OnboardingGuide";
+import SortableQuickTile from "@/components/SortableQuickTile";
 import CurrencyRateCharts from "@/components/CurrencyRateCharts";
 import ArmeniaFinanceModal, {
   type FinanceScreen,
@@ -19,6 +20,9 @@ import ArmeniaFinanceModal, {
 import ArmeniaFreelanceModal, {
   type FreelanceScreen,
 } from "@/components/ArmeniaFreelanceModal";
+import ArmeniaTransportModal, {
+  type TransportScreen,
+} from "@/components/ArmeniaTransportModal";
 import TouristCalculator from "@/components/TouristCalculator";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -31,11 +35,12 @@ import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
 import { hexToRgba } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import * as Haptics from "expo-haptics";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import {
   Alert,
-  Platform,
+  type LayoutChangeEvent,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -69,6 +74,107 @@ const POPULAR_CURRENCIES = [
   "ZAR",
   "AED",
 ];
+
+const QUICK_ACTION_STORAGE_KEY = "dashboardQuickActionOrderV1";
+
+const QUICK_ACTION_ORDER_DEFAULT = [
+  "converter",
+  "calculator",
+  "multi",
+  "saved",
+  "alerts",
+  "charts",
+  "tourist",
+  "vacation",
+] as const;
+
+type DashboardQuickActionId = (typeof QUICK_ACTION_ORDER_DEFAULT)[number];
+
+const DEFAULT_QUICK_ACTION_ORDER: DashboardQuickActionId[] = [
+  ...QUICK_ACTION_ORDER_DEFAULT,
+];
+
+function normalizeQuickActionOrder(raw: unknown): DashboardQuickActionId[] {
+  const allowed = new Set<string>(DEFAULT_QUICK_ACTION_ORDER);
+  if (!Array.isArray(raw)) return [...DEFAULT_QUICK_ACTION_ORDER];
+  const seen = new Set<string>();
+  const out: DashboardQuickActionId[] = [];
+  for (const x of raw) {
+    if (
+      typeof x === "string" &&
+      allowed.has(x) &&
+      !seen.has(x)
+    ) {
+      seen.add(x);
+      out.push(x as DashboardQuickActionId);
+    }
+  }
+  for (const id of DEFAULT_QUICK_ACTION_ORDER) {
+    if (!seen.has(id)) out.push(id);
+  }
+  return out;
+}
+
+const AM_FINANCE_CARDS_STORAGE_KEY = "dashboardAmFinanceCardsOrderV1";
+
+const AM_FINANCE_CARD_ORDER_DEFAULT = [
+  "paidLeave",
+  "maternity",
+  "amSalary",
+  "deposit",
+  "amFreelance",
+  "loanCalc",
+] as const;
+
+type AmFinanceCardId = (typeof AM_FINANCE_CARD_ORDER_DEFAULT)[number];
+
+const DEFAULT_AM_FINANCE_CARD_ORDER: AmFinanceCardId[] = [
+  ...AM_FINANCE_CARD_ORDER_DEFAULT,
+];
+
+function normalizeAmFinanceCardOrder(raw: unknown): AmFinanceCardId[] {
+  const allowed = new Set<string>(DEFAULT_AM_FINANCE_CARD_ORDER);
+  if (!Array.isArray(raw)) return [...DEFAULT_AM_FINANCE_CARD_ORDER];
+  const seen = new Set<string>();
+  const out: AmFinanceCardId[] = [];
+  for (const x of raw) {
+    if (typeof x === "string" && allowed.has(x) && !seen.has(x)) {
+      seen.add(x);
+      out.push(x as AmFinanceCardId);
+    }
+  }
+  for (const id of DEFAULT_AM_FINANCE_CARD_ORDER) {
+    if (!seen.has(id)) out.push(id);
+  }
+  return out;
+}
+
+const AM_TRANSPORT_CARDS_STORAGE_KEY = "dashboardAmTransportCardsOrderV1";
+
+const AM_TRANSPORT_CARD_ORDER_DEFAULT = ["tmCustoms", "tmDeal"] as const;
+
+type AmTransportCardId = (typeof AM_TRANSPORT_CARD_ORDER_DEFAULT)[number];
+
+const DEFAULT_AM_TRANSPORT_CARD_ORDER: AmTransportCardId[] = [
+  ...AM_TRANSPORT_CARD_ORDER_DEFAULT,
+];
+
+function normalizeAmTransportCardOrder(raw: unknown): AmTransportCardId[] {
+  const allowed = new Set<string>(DEFAULT_AM_TRANSPORT_CARD_ORDER);
+  if (!Array.isArray(raw)) return [...DEFAULT_AM_TRANSPORT_CARD_ORDER];
+  const seen = new Set<string>();
+  const out: AmTransportCardId[] = [];
+  for (const x of raw) {
+    if (typeof x === "string" && allowed.has(x) && !seen.has(x)) {
+      seen.add(x);
+      out.push(x as AmTransportCardId);
+    }
+  }
+  for (const id of DEFAULT_AM_TRANSPORT_CARD_ORDER) {
+    if (!seen.has(id)) out.push(id);
+  }
+  return out;
+}
 
 export default function HomeScreen() {
   const { t } = useLanguage();
@@ -114,6 +220,10 @@ export default function HomeScreen() {
   const [showArmeniaFreelance, setShowArmeniaFreelance] = useState(false);
   const [armeniaFreelanceScreen, setArmeniaFreelanceScreen] =
     useState<FreelanceScreen>("menu");
+  const [shareAmTransport, setShareAmTransport] = useState<string | null>(null);
+  const [showArmeniaTransport, setShowArmeniaTransport] = useState(false);
+  const [armeniaTransportScreen, setArmeniaTransportScreen] =
+    useState<TransportScreen>("menu");
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [currenciesData, setCurrenciesData] = useState<any>(null);
@@ -121,6 +231,75 @@ export default function HomeScreen() {
   const [multiCurrencyLoading, setMultiCurrencyLoading] = useState(false);
   const [savedRatesMaxVisible, setSavedRatesMaxVisible] = useState(4);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [quickActionOrder, setQuickActionOrder] = useState<
+    DashboardQuickActionId[]
+  >(() => [...DEFAULT_QUICK_ACTION_ORDER]);
+  const [quickActionReorderMode, setQuickActionReorderMode] = useState(false);
+  const [quickActionDraggingId, setQuickActionDraggingId] =
+    useState<DashboardQuickActionId | null>(null);
+  const [dashboardCardOrdersHydrated, setDashboardCardOrdersHydrated] =
+    useState(false);
+  const quickActionGridRef = useRef<View | null>(null);
+  const quickActionGridMetricsRef = useRef<{
+    pageX: number;
+    pageY: number;
+    width: number;
+    tileRowHeight: number;
+  } | null>(null);
+  const quickActionTileStepRef = useRef(128);
+  const quickActionDragIndexRef = useRef<number | null>(null);
+
+  const [amFinanceCardOrder, setAmFinanceCardOrder] = useState<
+    AmFinanceCardId[]
+  >(() => [...DEFAULT_AM_FINANCE_CARD_ORDER]);
+  const [amFinanceReorderMode, setAmFinanceReorderMode] = useState(false);
+  const [amFinanceDraggingId, setAmFinanceDraggingId] =
+    useState<AmFinanceCardId | null>(null);
+  const amFinanceGridRef = useRef<View | null>(null);
+  const amFinanceGridMetricsRef = useRef<{
+    pageX: number;
+    pageY: number;
+    width: number;
+    tileRowHeight: number;
+  } | null>(null);
+  const amFinanceTileStepRef = useRef(128);
+  const amFinanceDragIndexRef = useRef<number | null>(null);
+
+  const [amTransportCardOrder, setAmTransportCardOrder] = useState<
+    AmTransportCardId[]
+  >(() => [...DEFAULT_AM_TRANSPORT_CARD_ORDER]);
+  const [amTransportReorderMode, setAmTransportReorderMode] = useState(false);
+  const [amTransportDraggingId, setAmTransportDraggingId] =
+    useState<AmTransportCardId | null>(null);
+  const amTransportGridRef = useRef<View | null>(null);
+  const amTransportGridMetricsRef = useRef<{
+    pageX: number;
+    pageY: number;
+    width: number;
+    tileRowHeight: number;
+  } | null>(null);
+  const amTransportTileStepRef = useRef(128);
+  const amTransportDragIndexRef = useRef<number | null>(null);
+
+  const clearDashboardDragState = useCallback(() => {
+    setQuickActionDraggingId(null);
+    setAmFinanceDraggingId(null);
+    setAmTransportDraggingId(null);
+    quickActionDragIndexRef.current = null;
+    amFinanceDragIndexRef.current = null;
+    amTransportDragIndexRef.current = null;
+  }, []);
+
+  const setExclusiveReorderMode = useCallback(
+    (section: "quick" | "finance" | "transport" | null) => {
+      setQuickActionReorderMode(section === "quick");
+      setAmFinanceReorderMode(section === "finance");
+      setAmTransportReorderMode(section === "transport");
+      clearDashboardDragState();
+    },
+    [clearDashboardDragState]
+  );
 
   const closeAllQuickModals = useCallback(() => {
     setShowConverter(false);
@@ -134,8 +313,10 @@ export default function HomeScreen() {
     setShowLoanCalculator(false);
     setShowArmeniaFinance(false);
     setShowArmeniaFreelance(false);
+    setShowArmeniaTransport(false);
     setArmeniaFinanceScreen("menu");
     setArmeniaFreelanceScreen("menu");
+    setArmeniaTransportScreen("menu");
     setShareConverter(null);
     setShareMulti(null);
     setShareSaved(null);
@@ -144,6 +325,7 @@ export default function HomeScreen() {
     setShareTouristCalc(null);
     setShareAmFinance(null);
     setShareAmFreelance(null);
+    setShareAmTransport(null);
   }, []);
 
   const openArmeniaFinance = useCallback((screen: FinanceScreen = "menu") => {
@@ -151,6 +333,13 @@ export default function HomeScreen() {
     setCurrentView("dashboard");
     setArmeniaFinanceScreen(screen);
     setShowArmeniaFinance(true);
+  }, [closeAllQuickModals]);
+
+  const openArmeniaTransport = useCallback((screen: TransportScreen = "menu") => {
+    closeAllQuickModals();
+    setCurrentView("dashboard");
+    setArmeniaTransportScreen(screen);
+    setShowArmeniaTransport(true);
   }, [closeAllQuickModals]);
 
   const openCalculatorShortcut = useCallback(() => {
@@ -245,6 +434,16 @@ export default function HomeScreen() {
             }),
         },
         {
+          id: "amTransport",
+          label: t("quick.action.amTransport"),
+          icon: "car-sport-outline",
+          onPress: () =>
+            go(() => {
+              setArmeniaTransportScreen("menu");
+              setShowArmeniaTransport(true);
+            }),
+        },
+        {
           id: "loan",
           label: t("quick.action.loanCalculator"),
           icon: "wallet-outline",
@@ -259,7 +458,7 @@ export default function HomeScreen() {
       ];
       return items.filter((item) => item.id !== excludeId);
     },
-    [closeAllQuickModals, t, openArmeniaFinance]
+    [closeAllQuickModals, t, openArmeniaFinance, openArmeniaTransport]
   );
 
   const burgerQuickActions = useMemo(
@@ -274,9 +473,368 @@ export default function HomeScreen() {
       openVacationCalculator: () =>
         openQuickFromMenu(() => openArmeniaFinance("paidLeave")),
       openArmeniaFinance: () => openQuickFromMenu(() => openArmeniaFinance("menu")),
+      openArmeniaTransport: () => openQuickFromMenu(() => openArmeniaTransport("menu")),
     }),
-    [openQuickFromMenu, openArmeniaFinance]
+    [openQuickFromMenu, openArmeniaFinance, openArmeniaTransport]
   );
+
+  const dashboardQuickActionDefs = useMemo(() => {
+    const defs: Record<
+      DashboardQuickActionId,
+      {
+        labelKey: string;
+        icon: keyof typeof Ionicons.glyphMap;
+        active: boolean;
+        onPress: () => void;
+      }
+    > = {
+      converter: {
+        labelKey: "quick.action.converter",
+        icon: "swap-horizontal",
+        active: showConverter,
+        onPress: () => setShowConverter(!showConverter),
+      },
+      calculator: {
+        labelKey: "quick.action.calculator",
+        icon: "calculator-outline",
+        active: showCalculator,
+        onPress: () => setShowCalculator(!showCalculator),
+      },
+      multi: {
+        labelKey: "quick.action.multiCurrency",
+        icon: "stats-chart-outline",
+        active: showMultiCurrency,
+        onPress: () => setShowMultiCurrency(!showMultiCurrency),
+      },
+      saved: {
+        labelKey: "quick.action.savedRates",
+        icon: "bookmark-outline",
+        active: showSavedRates,
+        onPress: () => setShowSavedRates(!showSavedRates),
+      },
+      alerts: {
+        labelKey: "quick.action.rateAlerts",
+        icon: "notifications-outline",
+        active: showRateAlerts,
+        onPress: () => setShowRateAlerts(!showRateAlerts),
+      },
+      charts: {
+        labelKey: "quick.action.charts",
+        icon: "trending-up-outline",
+        active: showCharts,
+        onPress: () => setShowCharts(!showCharts),
+      },
+      tourist: {
+        labelKey: "quick.action.touristCalc",
+        icon: "airplane-outline",
+        active: showTouristCalc,
+        onPress: () => setShowTouristCalc(!showTouristCalc),
+      },
+      vacation: {
+        labelKey: "quick.action.vacationCalc",
+        icon: "calendar-outline",
+        active: false,
+        onPress: () => openArmeniaFinance("paidLeave"),
+      },
+    };
+    return defs;
+  }, [
+    showConverter,
+    showCalculator,
+    showMultiCurrency,
+    showSavedRates,
+    showRateAlerts,
+    showCharts,
+    showTouristCalc,
+    openArmeniaFinance,
+  ]);
+
+  const dashboardAmFinanceCardDefs = useMemo(() => {
+    const defs: Record<
+      AmFinanceCardId,
+      {
+        labelKey: string;
+        icon: keyof typeof Ionicons.glyphMap;
+        onPress: () => void;
+      }
+    > = {
+      paidLeave: {
+        labelKey: "amFinance.card.paidLeave",
+        icon: "umbrella-outline",
+        onPress: () => openArmeniaFinance("paidLeave"),
+      },
+      maternity: {
+        labelKey: "amFinance.card.maternity",
+        icon: "heart-outline",
+        onPress: () => openArmeniaFinance("maternity"),
+      },
+      amSalary: {
+        labelKey: "amFinance.card.salary",
+        icon: "cash-outline",
+        onPress: () => openArmeniaFinance("salary"),
+      },
+      deposit: {
+        labelKey: "amFinance.card.deposit",
+        icon: "trending-up-outline",
+        onPress: () => openArmeniaFinance("deposit"),
+      },
+      amFreelance: {
+        labelKey: "amFreelance.sectionTitle",
+        icon: "briefcase-outline",
+        onPress: () => {
+          closeAllQuickModals();
+          setCurrentView("dashboard");
+          setArmeniaFreelanceScreen("menu");
+          setShowArmeniaFreelance(true);
+        },
+      },
+      loanCalc: {
+        labelKey: "amFinance.card.loan",
+        icon: "wallet-outline",
+        onPress: () => openQuickFromMenu(() => setShowLoanCalculator(true)),
+      },
+    };
+    return defs;
+  }, [closeAllQuickModals, openArmeniaFinance, openQuickFromMenu]);
+
+  const dashboardAmTransportCardDefs = useMemo(() => {
+    const defs: Record<
+      AmTransportCardId,
+      {
+        labelKey: string;
+        icon: keyof typeof Ionicons.glyphMap;
+        onPress: () => void;
+      }
+    > = {
+      tmCustoms: {
+        labelKey: "amTransport.card.customs",
+        icon: "car-outline",
+        onPress: () => openArmeniaTransport("vehicleCustoms"),
+      },
+      tmDeal: {
+        labelKey: "amTransport.card.dealWorksheet",
+        icon: "document-text-outline",
+        onPress: () => openArmeniaTransport("vehicleDeal"),
+      },
+    };
+    return defs;
+  }, [openArmeniaTransport]);
+
+  const remeasureQuickActionGrid = useCallback(() => {
+    requestAnimationFrame(() => {
+      quickActionGridRef.current?.measureInWindow((x, y, w) => {
+        quickActionGridMetricsRef.current = {
+          pageX: x,
+          pageY: y,
+          width: w,
+          tileRowHeight: quickActionTileStepRef.current,
+        };
+      });
+    });
+  }, []);
+
+  const onQuickActionTileLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const h = e.nativeEvent.layout.height;
+      const gap = 12;
+      const step = h + gap;
+      if (quickActionTileStepRef.current !== step) {
+        quickActionTileStepRef.current = step;
+        remeasureQuickActionGrid();
+      }
+    },
+    [remeasureQuickActionGrid]
+  );
+
+  const handleQuickActionDragMove = useCallback(
+    (pageX: number, pageY: number) => {
+      const m = quickActionGridMetricsRef.current;
+      if (!m) return;
+      const from = quickActionDragIndexRef.current;
+      if (from === null) return;
+      const relX = pageX - m.pageX;
+      const relY = pageY - m.pageY;
+      if (relY < -24) return;
+      const col = relX < m.width / 2 ? 0 : 1;
+      const row = Math.max(0, Math.floor(relY / m.tileRowHeight));
+      setQuickActionOrder((prev) => {
+        let target = row * 2 + col;
+        target = Math.min(Math.max(target, 0), prev.length - 1);
+        if (target === from) return prev;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const next = [...prev];
+        const [item] = next.splice(from, 1);
+        next.splice(target, 0, item);
+        quickActionDragIndexRef.current = target;
+        return next;
+      });
+    },
+    []
+  );
+
+  const remeasureAmFinanceGrid = useCallback(() => {
+    requestAnimationFrame(() => {
+      amFinanceGridRef.current?.measureInWindow((x, y, w) => {
+        amFinanceGridMetricsRef.current = {
+          pageX: x,
+          pageY: y,
+          width: w,
+          tileRowHeight: amFinanceTileStepRef.current,
+        };
+      });
+    });
+  }, []);
+
+  const onAmFinanceTileLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const h = e.nativeEvent.layout.height;
+      const gap = 12;
+      const step = h + gap;
+      if (amFinanceTileStepRef.current !== step) {
+        amFinanceTileStepRef.current = step;
+        remeasureAmFinanceGrid();
+      }
+    },
+    [remeasureAmFinanceGrid]
+  );
+
+  const handleAmFinanceDragMove = useCallback(
+    (pageX: number, pageY: number) => {
+      const m = amFinanceGridMetricsRef.current;
+      if (!m) return;
+      const from = amFinanceDragIndexRef.current;
+      if (from === null) return;
+      const relX = pageX - m.pageX;
+      const relY = pageY - m.pageY;
+      if (relY < -24) return;
+      const col = relX < m.width / 2 ? 0 : 1;
+      const row = Math.max(0, Math.floor(relY / m.tileRowHeight));
+      setAmFinanceCardOrder((prev) => {
+        let target = row * 2 + col;
+        target = Math.min(Math.max(target, 0), prev.length - 1);
+        if (target === from) return prev;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const next = [...prev];
+        const [item] = next.splice(from, 1);
+        next.splice(target, 0, item);
+        amFinanceDragIndexRef.current = target;
+        return next;
+      });
+    },
+    []
+  );
+
+  const remeasureAmTransportGrid = useCallback(() => {
+    requestAnimationFrame(() => {
+      amTransportGridRef.current?.measureInWindow((x, y, w) => {
+        amTransportGridMetricsRef.current = {
+          pageX: x,
+          pageY: y,
+          width: w,
+          tileRowHeight: amTransportTileStepRef.current,
+        };
+      });
+    });
+  }, []);
+
+  const onAmTransportTileLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const h = e.nativeEvent.layout.height;
+      const gap = 12;
+      const step = h + gap;
+      if (amTransportTileStepRef.current !== step) {
+        amTransportTileStepRef.current = step;
+        remeasureAmTransportGrid();
+      }
+    },
+    [remeasureAmTransportGrid]
+  );
+
+  const handleAmTransportDragMove = useCallback(
+    (pageX: number, pageY: number) => {
+      const m = amTransportGridMetricsRef.current;
+      if (!m) return;
+      const from = amTransportDragIndexRef.current;
+      if (from === null) return;
+      const relX = pageX - m.pageX;
+      const relY = pageY - m.pageY;
+      if (relY < -24) return;
+      const col = relX < m.width / 2 ? 0 : 1;
+      const row = Math.max(0, Math.floor(relY / m.tileRowHeight));
+      setAmTransportCardOrder((prev) => {
+        let target = row * 2 + col;
+        target = Math.min(Math.max(target, 0), prev.length - 1);
+        if (target === from) return prev;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const next = [...prev];
+        const [item] = next.splice(from, 1);
+        next.splice(target, 0, item);
+        amTransportDragIndexRef.current = target;
+        return next;
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [qaRaw, finRaw, trRaw] = await Promise.all([
+          AsyncStorage.getItem(QUICK_ACTION_STORAGE_KEY),
+          AsyncStorage.getItem(AM_FINANCE_CARDS_STORAGE_KEY),
+          AsyncStorage.getItem(AM_TRANSPORT_CARDS_STORAGE_KEY),
+        ]);
+        if (cancelled) return;
+        if (qaRaw) {
+          setQuickActionOrder(
+            normalizeQuickActionOrder(JSON.parse(qaRaw) as unknown)
+          );
+        }
+        if (finRaw) {
+          setAmFinanceCardOrder(
+            normalizeAmFinanceCardOrder(JSON.parse(finRaw) as unknown)
+          );
+        }
+        if (trRaw) {
+          setAmTransportCardOrder(
+            normalizeAmTransportCardOrder(JSON.parse(trRaw) as unknown)
+          );
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) setDashboardCardOrdersHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!dashboardCardOrdersHydrated) return;
+    void AsyncStorage.setItem(
+      QUICK_ACTION_STORAGE_KEY,
+      JSON.stringify(quickActionOrder)
+    );
+  }, [dashboardCardOrdersHydrated, quickActionOrder]);
+
+  useEffect(() => {
+    if (!dashboardCardOrdersHydrated) return;
+    void AsyncStorage.setItem(
+      AM_FINANCE_CARDS_STORAGE_KEY,
+      JSON.stringify(amFinanceCardOrder)
+    );
+  }, [dashboardCardOrdersHydrated, amFinanceCardOrder]);
+
+  useEffect(() => {
+    if (!dashboardCardOrdersHydrated) return;
+    void AsyncStorage.setItem(
+      AM_TRANSPORT_CARDS_STORAGE_KEY,
+      JSON.stringify(amTransportCardOrder)
+    );
+  }, [dashboardCardOrdersHydrated, amTransportCardOrder]);
 
   useEffect(() => {
     loadExchangeRates();
@@ -436,225 +994,487 @@ export default function HomeScreen() {
           contentContainerStyle={styles.scrollContentContainer}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
+          scrollEnabled={
+            !quickActionDraggingId &&
+            !amFinanceDraggingId &&
+            !amTransportDraggingId
+          }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
           <View style={styles.quickActionsContainer}>
-            <ThemedText
-              type="defaultSemiBold"
-              style={[styles.quickActionsTitle, { color: textColor }]}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                marginBottom: quickActionReorderMode ? 8 : 14,
+              }}
             >
-              {t("dashboard.quickActions")}
-            </ThemedText>
-            <View style={styles.quickActionsGrid}>
-              {(
-                [
+              <ThemedText
+                type="defaultSemiBold"
+                style={[
+                  styles.quickActionsTitle,
                   {
-                    id: "converter" as const,
-                    labelKey: "quick.action.converter",
-                    icon: "swap-horizontal" as const,
-                    active: showConverter,
-                    onPress: () => setShowConverter(!showConverter),
+                    color: textColor,
+                    marginBottom: 0,
+                    flex: 1,
+                    minWidth: 0,
                   },
-                  {
-                    id: "calculator" as const,
-                    labelKey: "quick.action.calculator",
-                    icon: "calculator-outline" as const,
-                    active: showCalculator,
-                    onPress: () => setShowCalculator(!showCalculator),
-                  },
-                  {
-                    id: "multi" as const,
-                    labelKey: "quick.action.multiCurrency",
-                    icon: "stats-chart-outline" as const,
-                    active: showMultiCurrency,
-                    onPress: () => setShowMultiCurrency(!showMultiCurrency),
-                  },
-                  {
-                    id: "saved" as const,
-                    labelKey: "quick.action.savedRates",
-                    icon: "bookmark-outline" as const,
-                    active: showSavedRates,
-                    onPress: () => setShowSavedRates(!showSavedRates),
-                  },
-                  {
-                    id: "alerts" as const,
-                    labelKey: "quick.action.rateAlerts",
-                    icon: "notifications-outline" as const,
-                    active: showRateAlerts,
-                    onPress: () => setShowRateAlerts(!showRateAlerts),
-                  },
-                  {
-                    id: "charts" as const,
-                    labelKey: "quick.action.charts",
-                    icon: "trending-up-outline" as const,
-                    active: showCharts,
-                    onPress: () => setShowCharts(!showCharts),
-                  },
-                  {
-                    id: "tourist" as const,
-                    labelKey: "quick.action.touristCalc",
-                    icon: "airplane-outline" as const,
-                    active: showTouristCalc,
-                    onPress: () => setShowTouristCalc(!showTouristCalc),
-                  },
-                  {
-                    id: "vacation" as const,
-                    labelKey: "quick.action.vacationCalc",
-                    icon: "calendar-outline" as const,
-                    active: false,
-                    onPress: () => openArmeniaFinance("paidLeave"),
-                  },
-                ] as const
-              ).map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.85}
-                  style={[
-                    styles.quickTile,
-                    {
-                      // Use canvas tint, not surface (white) — white at any alpha reads as a solid block on the chart.
-                      backgroundColor: item.active
-                        ? hexToRgba(primaryColor, 0.22)
-                        : hexToRgba(pageBackgroundColor, 0.52),
-                      borderColor: item.active ? primaryColor : borderColor,
-                      borderWidth: item.active ? 2 : 1,
-                    },
-                  ]}
-                  onPress={item.onPress}
-                >
-                  <View
+                ]}
+              >
+                {t("dashboard.quickActions")}
+              </ThemedText>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  quickActionReorderMode
+                    ? t("dashboard.finishReorder")
+                    : t("dashboard.reorderCards")
+                }
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (quickActionReorderMode) setExclusiveReorderMode(null);
+                  else setExclusiveReorderMode("quick");
+                }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  borderWidth: quickActionReorderMode ? 2 : 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderColor: primaryColor,
+                  backgroundColor: quickActionReorderMode
+                    ? hexToRgba(primaryColor, 0.16)
+                    : hexToRgba(primaryColor, 0.09),
+                }}
+              >
+                <Ionicons
+                  name={
+                    quickActionReorderMode ? "checkmark-circle" : "swap-vertical"
+                  }
+                  size={22}
+                  color={primaryColor}
+                />
+              </TouchableOpacity>
+            </View>
+            {quickActionReorderMode ? (
+              <ThemedText
+                type="caption"
+                style={{
+                  color: textSecondaryColor,
+                  marginBottom: 12,
+                  lineHeight: 18,
+                }}
+              >
+                {t("dashboard.reorderCardsHint")}
+              </ThemedText>
+            ) : null}
+            <View
+              ref={quickActionGridRef}
+              collapsable={false}
+              onLayout={remeasureQuickActionGrid}
+              style={styles.quickActionsGrid}
+            >
+              {quickActionOrder.map((actionId, index) => {
+                const item = dashboardQuickActionDefs[actionId];
+                const tileInner = (
+                  <>
+                    <View
+                      style={[
+                        styles.quickTileIconWrap,
+                        {
+                          backgroundColor: item.active
+                            ? hexToRgba(primaryColor, 0.14)
+                            : "transparent",
+                          borderWidth: 1,
+                          borderColor: item.active
+                            ? hexToRgba(primaryColor, 0.45)
+                            : hexToRgba(borderColor, 0.55),
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={item.icon}
+                        size={24}
+                        color={
+                          item.active ? primaryColor : textSecondaryColor
+                        }
+                      />
+                    </View>
+                    <ThemedText
+                      type="caption"
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                      style={[
+                        styles.quickTileLabel,
+                        {
+                          color: textColor,
+                          paddingRight: quickActionReorderMode ? 22 : 0,
+                        },
+                      ]}
+                    >
+                      {t(item.labelKey)}
+                    </ThemedText>
+                  </>
+                );
+
+                return (
+                  <SortableQuickTile
+                    key={actionId}
+                    reorderMode={quickActionReorderMode}
+                    isDragging={quickActionDraggingId === actionId}
+                    handleColor={textSecondaryColor}
+                    onDragStart={() => {
+                      quickActionDragIndexRef.current = index;
+                      setQuickActionDraggingId(actionId);
+                    }}
+                    onDragMove={handleQuickActionDragMove}
+                    onDragEnd={() => {
+                      setQuickActionDraggingId(null);
+                      quickActionDragIndexRef.current = null;
+                    }}
                     style={[
-                      styles.quickTileIconWrap,
+                      styles.quickTile,
                       {
                         backgroundColor: item.active
-                          ? hexToRgba(primaryColor, 0.14)
-                          : "transparent",
-                        borderWidth: 1,
-                        borderColor: item.active
-                          ? hexToRgba(primaryColor, 0.45)
-                          : hexToRgba(borderColor, 0.55),
+                          ? hexToRgba(primaryColor, 0.22)
+                          : hexToRgba(pageBackgroundColor, 0.52),
+                        borderColor: item.active ? primaryColor : borderColor,
+                        borderWidth: item.active ? 2 : 1,
                       },
                     ]}
                   >
-                    <Ionicons
-                      name={item.icon}
-                      size={24}
-                      color={item.active ? primaryColor : textSecondaryColor}
-                    />
-                  </View>
-                  <ThemedText
-                    type="caption"
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                    style={[styles.quickTileLabel, { color: textColor }]}
-                  >
-                    {t(item.labelKey)}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      disabled={quickActionReorderMode}
+                      onLayout={
+                        index === 0 ? onQuickActionTileLayout : undefined
+                      }
+                      style={{ flex: 1 }}
+                      onPress={item.onPress}
+                    >
+                      {tileInner}
+                    </TouchableOpacity>
+                  </SortableQuickTile>
+                );
+              })}
             </View>
           </View>
 
           <View style={styles.amFinanceSection}>
-            <ThemedText
-              type="defaultSemiBold"
-              style={[styles.quickActionsTitle, { color: textColor }]}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                marginBottom: amFinanceReorderMode ? 8 : 14,
+              }}
             >
-              {t("amFinance.sectionTitle")}
-            </ThemedText>
-            <View style={styles.quickActionsGrid}>
-              {(
-                [
+              <ThemedText
+                type="defaultSemiBold"
+                style={[
+                  styles.quickActionsTitle,
                   {
-                    id: "paidLeave" as const,
-                    labelKey: "amFinance.card.paidLeave",
-                    icon: "umbrella-outline" as const,
-                    screen: "paidLeave" as const,
+                    color: textColor,
+                    marginBottom: 0,
+                    flex: 1,
+                    minWidth: 0,
                   },
-                  {
-                    id: "maternity" as const,
-                    labelKey: "amFinance.card.maternity",
-                    icon: "heart-outline" as const,
-                    screen: "maternity" as const,
-                  },
-                  {
-                    id: "amSalary" as const,
-                    labelKey: "amFinance.card.salary",
-                    icon: "cash-outline" as const,
-                    screen: "salary" as const,
-                  },
-                  {
-                    id: "deposit" as const,
-                    labelKey: "amFinance.card.deposit",
-                    icon: "trending-up-outline" as const,
-                    screen: "deposit" as const,
-                  },
-                  {
-                    id: "amFreelance" as const,
-                    labelKey: "amFreelance.sectionTitle",
-                    icon: "briefcase-outline" as const,
-                    isFreelance: true as const,
-                  },
-                  {
-                    id: "loanCalc" as const,
-                    labelKey: "amFinance.card.loan",
-                    icon: "wallet-outline" as const,
-                    isLoan: true as const,
-                  },
-                ] as const
-              ).map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.85}
-                  style={[
-                    styles.quickTile,
-                    {
-                      backgroundColor: hexToRgba(pageBackgroundColor, 0.52),
-                      borderColor,
-                      borderWidth: 1,
-                    },
-                  ]}
-                  onPress={() => {
-                    if ("isLoan" in item && item.isLoan) {
-                      openQuickFromMenu(() => setShowLoanCalculator(true));
-                    } else if ("isFreelance" in item && item.isFreelance) {
-                      closeAllQuickModals();
-                      setCurrentView("dashboard");
-                      setArmeniaFreelanceScreen("menu");
-                      setShowArmeniaFreelance(true);
-                    } else if ("screen" in item) {
-                      openArmeniaFinance(item.screen);
-                    }
-                  }}
-                >
-                  <View
+                ]}
+              >
+                {t("amFinance.sectionTitle")}
+              </ThemedText>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  amFinanceReorderMode
+                    ? t("dashboard.finishReorder")
+                    : t("dashboard.reorderCards")
+                }
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (amFinanceReorderMode) setExclusiveReorderMode(null);
+                  else setExclusiveReorderMode("finance");
+                }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  borderWidth: amFinanceReorderMode ? 2 : 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderColor: primaryColor,
+                  backgroundColor: amFinanceReorderMode
+                    ? hexToRgba(primaryColor, 0.16)
+                    : hexToRgba(primaryColor, 0.09),
+                }}
+              >
+                <Ionicons
+                  name={
+                    amFinanceReorderMode ? "checkmark-circle" : "swap-vertical"
+                  }
+                  size={22}
+                  color={primaryColor}
+                />
+              </TouchableOpacity>
+            </View>
+            {amFinanceReorderMode ? (
+              <ThemedText
+                type="caption"
+                style={{
+                  color: textSecondaryColor,
+                  marginBottom: 12,
+                  lineHeight: 18,
+                }}
+              >
+                {t("dashboard.reorderCardsHint")}
+              </ThemedText>
+            ) : null}
+            <View
+              ref={amFinanceGridRef}
+              collapsable={false}
+              onLayout={remeasureAmFinanceGrid}
+              style={styles.quickActionsGrid}
+            >
+              {amFinanceCardOrder.map((cardId, index) => {
+                const item = dashboardAmFinanceCardDefs[cardId];
+                const tileInner = (
+                  <>
+                    <View
+                      style={[
+                        styles.quickTileIconWrap,
+                        {
+                          backgroundColor: "transparent",
+                          borderWidth: 1,
+                          borderColor: hexToRgba(borderColor, 0.55),
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={item.icon}
+                        size={24}
+                        color={textSecondaryColor}
+                      />
+                    </View>
+                    <ThemedText
+                      type="caption"
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                      style={[
+                        styles.quickTileLabel,
+                        {
+                          color: textColor,
+                          paddingRight: amFinanceReorderMode ? 22 : 0,
+                        },
+                      ]}
+                    >
+                      {t(item.labelKey)}
+                    </ThemedText>
+                  </>
+                );
+
+                return (
+                  <SortableQuickTile
+                    key={cardId}
+                    reorderMode={amFinanceReorderMode}
+                    isDragging={amFinanceDraggingId === cardId}
+                    handleColor={textSecondaryColor}
+                    onDragStart={() => {
+                      amFinanceDragIndexRef.current = index;
+                      setAmFinanceDraggingId(cardId);
+                    }}
+                    onDragMove={handleAmFinanceDragMove}
+                    onDragEnd={() => {
+                      setAmFinanceDraggingId(null);
+                      amFinanceDragIndexRef.current = null;
+                    }}
                     style={[
-                      styles.quickTileIconWrap,
+                      styles.quickTile,
                       {
-                        backgroundColor: "transparent",
+                        backgroundColor: hexToRgba(pageBackgroundColor, 0.52),
+                        borderColor,
                         borderWidth: 1,
-                        borderColor: hexToRgba(borderColor, 0.55),
                       },
                     ]}
                   >
-                    <Ionicons
-                      name={item.icon}
-                      size={24}
-                      color={textSecondaryColor}
-                    />
-                  </View>
-                  <ThemedText
-                    type="caption"
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                    style={[styles.quickTileLabel, { color: textColor }]}
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      disabled={amFinanceReorderMode}
+                      onLayout={
+                        index === 0 ? onAmFinanceTileLayout : undefined
+                      }
+                      style={{ flex: 1 }}
+                      onPress={item.onPress}
+                    >
+                      {tileInner}
+                    </TouchableOpacity>
+                  </SortableQuickTile>
+                );
+              })}
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.amTransportSection,
+              { borderTopColor: hexToRgba(borderColor, 0.4) },
+            ]}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                marginBottom: amTransportReorderMode ? 8 : 14,
+              }}
+            >
+              <ThemedText
+                type="defaultSemiBold"
+                style={[
+                  styles.quickActionsTitle,
+                  {
+                    color: textColor,
+                    marginBottom: 0,
+                    flex: 1,
+                    minWidth: 0,
+                  },
+                ]}
+              >
+                {t("amTransport.sectionTitle")}
+              </ThemedText>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  amTransportReorderMode
+                    ? t("dashboard.finishReorder")
+                    : t("dashboard.reorderCards")
+                }
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (amTransportReorderMode) setExclusiveReorderMode(null);
+                  else setExclusiveReorderMode("transport");
+                }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  borderWidth: amTransportReorderMode ? 2 : 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderColor: primaryColor,
+                  backgroundColor: amTransportReorderMode
+                    ? hexToRgba(primaryColor, 0.16)
+                    : hexToRgba(primaryColor, 0.09),
+                }}
+              >
+                <Ionicons
+                  name={
+                    amTransportReorderMode ? "checkmark-circle" : "swap-vertical"
+                  }
+                  size={22}
+                  color={primaryColor}
+                />
+              </TouchableOpacity>
+            </View>
+            {amTransportReorderMode ? (
+              <ThemedText
+                type="caption"
+                style={{
+                  color: textSecondaryColor,
+                  marginBottom: 12,
+                  lineHeight: 18,
+                }}
+              >
+                {t("dashboard.reorderCardsHint")}
+              </ThemedText>
+            ) : null}
+            <View
+              ref={amTransportGridRef}
+              collapsable={false}
+              onLayout={remeasureAmTransportGrid}
+              style={styles.quickActionsGrid}
+            >
+              {amTransportCardOrder.map((cardId, index) => {
+                const item = dashboardAmTransportCardDefs[cardId];
+                const tileInner = (
+                  <>
+                    <View
+                      style={[
+                        styles.quickTileIconWrap,
+                        {
+                          backgroundColor: "transparent",
+                          borderWidth: 1,
+                          borderColor: hexToRgba(borderColor, 0.55),
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={item.icon}
+                        size={24}
+                        color={textSecondaryColor}
+                      />
+                    </View>
+                    <ThemedText
+                      type="caption"
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                      style={[
+                        styles.quickTileLabel,
+                        {
+                          color: textColor,
+                          paddingRight: amTransportReorderMode ? 22 : 0,
+                        },
+                      ]}
+                    >
+                      {t(item.labelKey)}
+                    </ThemedText>
+                  </>
+                );
+
+                return (
+                  <SortableQuickTile
+                    key={cardId}
+                    reorderMode={amTransportReorderMode}
+                    isDragging={amTransportDraggingId === cardId}
+                    handleColor={textSecondaryColor}
+                    onDragStart={() => {
+                      amTransportDragIndexRef.current = index;
+                      setAmTransportDraggingId(cardId);
+                    }}
+                    onDragMove={handleAmTransportDragMove}
+                    onDragEnd={() => {
+                      setAmTransportDraggingId(null);
+                      amTransportDragIndexRef.current = null;
+                    }}
+                    style={[
+                      styles.quickTile,
+                      {
+                        backgroundColor: hexToRgba(pageBackgroundColor, 0.52),
+                        borderColor,
+                        borderWidth: 1,
+                      },
+                    ]}
                   >
-                    {t(item.labelKey)}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      disabled={amTransportReorderMode}
+                      onLayout={
+                        index === 0 ? onAmTransportTileLayout : undefined
+                      }
+                      style={{ flex: 1 }}
+                      onPress={item.onPress}
+                    >
+                      {tileInner}
+                    </TouchableOpacity>
+                  </SortableQuickTile>
+                );
+              })}
             </View>
           </View>
 
@@ -891,6 +1711,25 @@ export default function HomeScreen() {
           />
         </QuickActionModal>
 
+        <QuickActionModal
+          visible={showArmeniaTransport}
+          onClose={() => {
+            setShowArmeniaTransport(false);
+            setArmeniaTransportScreen("menu");
+            setShareAmTransport(null);
+          }}
+          title={t("amTransport.modalTitle")}
+          shareMessage={shareAmTransport}
+          onOpenCalculator={openCalculatorShortcut}
+          onOpenConverter={openConverterShortcut}
+          menuItems={quickToolsMenu("amTransport")}
+        >
+          <ArmeniaTransportModal
+            initialScreen={armeniaTransportScreen}
+            onShareableMessageChange={setShareAmTransport}
+          />
+        </QuickActionModal>
+
       </ThemedView>
     );
   };
@@ -968,6 +1807,12 @@ const styles = StyleSheet.create({
   },
   amFinanceSection: {
     marginBottom: 28,
+  },
+  amTransportSection: {
+    marginTop: 4,
+    marginBottom: 28,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   quickActionsTitle: {
     fontSize: 17,

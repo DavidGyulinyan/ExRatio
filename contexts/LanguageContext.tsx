@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AM_FINANCE_EN, AM_FINANCE_HY } from './amFinance.i18n';
 import { AM_FREELANCE_EN, AM_FREELANCE_HY } from "./amFreelance.i18n";
+import { AM_TRANSPORT_EN, AM_TRANSPORT_HY } from "./amTransport.i18n";
 
 export type Language = 'en' | 'hy' | 'ru' | 'es' | 'zh' | 'hi';
 
@@ -22,6 +23,10 @@ const translations = {
     // App & Navigation    // Dashboard
     'dashboard.title': 'Dashboard',
     'dashboard.quickActions': 'Quick Actions',
+    'dashboard.reorderCards': 'Sort cards',
+    'dashboard.reorderCardsHint':
+      'Drag the grip (⋮) on a tile to move it. Order is saved automatically.',
+    'dashboard.finishReorder': 'Done',
     'dashboard.converter': 'Converter',
     'dashboard.multiCurrency': 'Multi Currency',
     'dashboard.rateAlerts': 'Rate Alerts',
@@ -463,6 +468,7 @@ const translations = {
     'charts.title': 'Currency rate charts',
     ...AM_FINANCE_EN,
     ...AM_FREELANCE_EN,
+    ...AM_TRANSPORT_EN,
   },
   hy: {
     'app.title': 'Capital',
@@ -470,6 +476,10 @@ const translations = {
     // Armenian    
     'dashboard.title': 'Վահանակ',
     'dashboard.quickActions': 'Արագ գործողություններ',
+    'dashboard.reorderCards': 'Դասակարգել քարտերը ըստ ցանկության',
+    'dashboard.reorderCardsHint':
+      'Քարշեք աջ անկյունի նշանը՝ քարտը տեղափոխելու համար։ Դասավորությունը պահպանվում է ավտոմատ։',
+    'dashboard.finishReorder': 'Ավարտել',
     'dashboard.converter': 'Փոխարկիչ',
     'dashboard.multiCurrency': 'Բազմարժույթ',
     'dashboard.rateAlerts': 'Դրույքի ծանուցումներ',
@@ -888,6 +898,7 @@ const translations = {
     'signup.selectLanguage': 'Ընտրել լեզու',
     ...AM_FINANCE_HY,
     ...AM_FREELANCE_HY,
+    ...AM_TRANSPORT_HY,
   },
   ru: {
     'app.title': 'Capital',
@@ -895,6 +906,10 @@ const translations = {
     // Russian    
     'dashboard.title': 'Панель',
     'dashboard.quickActions': 'Быстрые действия',
+    'dashboard.reorderCards': 'Порядок карточек',
+    'dashboard.reorderCardsHint':
+      'Перетащите значок справа, чтобы переместить плитку. Порядок сохраняется автоматически.',
+    'dashboard.finishReorder': 'Готово',
     'dashboard.converter': 'Конвертер',
     'dashboard.multiCurrency': 'Мультивалютный',
     'dashboard.rateAlerts': 'Уведомления о курсах',
@@ -1262,6 +1277,7 @@ const translations = {
     'rateAlerts.reset': 'Сбросить',
     ...AM_FINANCE_EN,
     ...AM_FREELANCE_EN,
+    ...AM_TRANSPORT_EN,
   },
   es: {
     'app.title': 'Capital',
@@ -1269,6 +1285,10 @@ const translations = {
     // Spanish    
     'dashboard.title': 'Panel',
     'dashboard.quickActions': 'Acciones Rápidas',
+    'dashboard.reorderCards': 'Ordenar tarjetas',
+    'dashboard.reorderCardsHint':
+      'Arrastra el icono a la derecha para mover la ficha. El orden se guarda solo.',
+    'dashboard.finishReorder': 'Listo',
     'dashboard.converter': 'Convertidor',
     'dashboard.multiCurrency': 'Multi Moneda',
     'dashboard.rateAlerts': 'Alertas de Tipo',
@@ -1636,6 +1656,7 @@ const translations = {
     'charts.title': 'Gráficos de Tipos de Cambio',
     ...AM_FINANCE_EN,
     ...AM_FREELANCE_EN,
+    ...AM_TRANSPORT_EN,
   },
   zh: {
     'app.title': 'Capital',
@@ -1643,6 +1664,9 @@ const translations = {
     // Chinese (Simplified)    
     'dashboard.title': '仪表板',
     'dashboard.quickActions': '快速操作',
+    'dashboard.reorderCards': '排序卡片',
+    'dashboard.reorderCardsHint': '拖动右侧图标移动卡片，顺序会自动保存。',
+    'dashboard.finishReorder': '完成',
     'dashboard.converter': '转换器',
     'dashboard.multiCurrency': '多货币',
     'dashboard.rateAlerts': '汇率提醒',
@@ -2008,6 +2032,7 @@ const translations = {
     'charts.title': '汇率图表',
     ...AM_FINANCE_EN,
     ...AM_FREELANCE_EN,
+    ...AM_TRANSPORT_EN,
   },
   hi: {
     'app.title': 'Capital',
@@ -2015,6 +2040,10 @@ const translations = {
     // Hindi    
     'dashboard.title': 'डैशबोर्ड',
     'dashboard.quickActions': 'त्वरित कार्य',
+    'dashboard.reorderCards': 'कार्ड क्रमबद्ध करें',
+    'dashboard.reorderCardsHint':
+      'टाइल खिसकाने के लिए दाएँ आइकॉन को खींचें। क्रम अपने आप सेव होता है।',
+    'dashboard.finishReorder': 'हो गया',
     'dashboard.converter': 'कन्वर्टर',
     'dashboard.multiCurrency': 'मल्टी करेंसी',
     'dashboard.rateAlerts': 'रेट अलर्ट्स',
@@ -2381,6 +2410,7 @@ const translations = {
     'charts.title': 'एक्सचेंज रेट चार्ट',
     ...AM_FINANCE_EN,
     ...AM_FREELANCE_EN,
+    ...AM_TRANSPORT_EN,
   },
 };
 
