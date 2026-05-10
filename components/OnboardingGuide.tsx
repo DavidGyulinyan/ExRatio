@@ -83,13 +83,14 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ onComplete }) => {
   };
 
   const completeOnboarding = async () => {
+    const userId = user?.id;
     try {
-      if (user?.id) {
-        await setOnboardingCompletedForUser(user.id);
+      if (userId) {
+        await setOnboardingCompletedForUser(userId);
       }
-      onComplete();
     } catch (error) {
       console.error('Failed to save onboarding status:', error);
+    } finally {
       onComplete();
     }
   };

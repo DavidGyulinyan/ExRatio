@@ -330,26 +330,31 @@ export default function MultiCurrencyConverter({
   }, [amount, fromCurrency, conversionTargets]);
 
   // Fallback loading mechanism - load immediately when component mounts
-  useEffect(() => {
+  useEffect(() => {
+
 
     const loadStateFallback = async () => {
       try {
         if (user) {
-          // Authenticated user - load from database
+          // Authenticated user - load from database
+
           const history = await UserDataService.getConverterHistory(1);
           if (history && history.length > 0) {
-            const latestRecord = history[0];
+            const latestRecord = history[0];
+
 
             // Set state immediately, validation will happen when currencies are loaded
             if (latestRecord.amount != null) {
               const n = Number(latestRecord.amount);
               if (Number.isFinite(n) && n !== 0) {
-                setAmount(latestRecord.amount.toString());
+                setAmount(latestRecord.amount.toString());
+
               }
             }
 
             if (latestRecord.from_currency) {
-              setFromCurrency(latestRecord.from_currency);
+              setFromCurrency(latestRecord.from_currency);
+
             }
 
             if (
@@ -362,43 +367,54 @@ export default function MultiCurrencyConverter({
                   currency: target.currency,
                 })
               );
-              setConversionTargets(targetsWithIds);
+              setConversionTargets(targetsWithIds);
+
             }
-
-          } else {
+
+
+          } else {
+
           }
           // Mark that data loading is complete
           setHasLoadedData(true);
         } else {
-          // Non-authenticated user - load from AsyncStorage
+          // Non-authenticated user - load from AsyncStorage
+
           const savedState = await AsyncStorage.getItem(STORAGE_KEY);
 
-          if (savedState) {
+          if (savedState) {
+
             const parsedState = JSON.parse(savedState);
             const {
               amount: savedAmount,
               fromCurrency: savedFromCurrency,
               conversionTargets: savedTargets,
             } = parsedState;
-
+
+
 
             // Set state immediately, validation will happen when currencies are loaded
             if (savedAmount !== undefined && savedAmount !== null && savedAmount !== "") {
               const n = Number(savedAmount);
               if (Number.isFinite(n) && n !== 0) {
-                setAmount(String(savedAmount));
+                setAmount(String(savedAmount));
+
               }
             }
 
             if (savedFromCurrency) {
-              setFromCurrency(savedFromCurrency);
+              setFromCurrency(savedFromCurrency);
+
             }
 
             if (savedTargets && Array.isArray(savedTargets)) {
-              setConversionTargets(savedTargets);
+              setConversionTargets(savedTargets);
+
             }
-
-          } else {
+
+
+          } else {
+
           }
           // Mark that data loading is complete
           setHasLoadedData(true);
@@ -415,16 +431,20 @@ export default function MultiCurrencyConverter({
   }, [user]);
 
   // Enhanced persistence mechanism with force refresh
-  useEffect(() => {
+  useEffect(() => {
 
-    const forceRefreshPersistedData = async () => {
+
+    const forceRefreshPersistedData = async () => {
+
 
       try {
         if (user) {
-          // Authenticated user - force reload from database
+          // Authenticated user - force reload from database
+
           const history = await UserDataService.getConverterHistory(1);
           if (history && history.length > 0) {
-            const latestRecord = history[0];
+            const latestRecord = history[0];
+
 
             // Always set the targets, even if they might be filtered later
             if (
@@ -436,7 +456,8 @@ export default function MultiCurrencyConverter({
                   id: target.id || Date.now().toString() + Math.random(),
                   currency: target.currency,
                 })
-              );
+              );
+
               setConversionTargets(targetsWithIds);
             }
 
@@ -450,12 +471,14 @@ export default function MultiCurrencyConverter({
             if (latestRecord.from_currency) {
               setFromCurrency(latestRecord.from_currency);
             }
-          } else {
+          } else {
+
           }
           // Mark that data loading is complete
           setHasLoadedData(true);
         } else {
-          // Non-authenticated user - force reload from AsyncStorage
+          // Non-authenticated user - force reload from AsyncStorage
+
           const savedState = await AsyncStorage.getItem(STORAGE_KEY);
           if (savedState) {
             const parsedState = JSON.parse(savedState);
@@ -464,10 +487,12 @@ export default function MultiCurrencyConverter({
               fromCurrency: savedFromCurrency,
               conversionTargets: savedTargets,
             } = parsedState;
-
+
+
 
             // Always set the targets, even if they might be filtered later
-            if (savedTargets && Array.isArray(savedTargets)) {
+            if (savedTargets && Array.isArray(savedTargets)) {
+
               setConversionTargets(savedTargets);
             }
 
@@ -479,7 +504,8 @@ export default function MultiCurrencyConverter({
             if (savedFromCurrency) {
               setFromCurrency(savedFromCurrency);
             }
-          } else {
+          } else {
+
           }
           // Mark that data loading is complete
           setHasLoadedData(true);
@@ -498,10 +524,15 @@ export default function MultiCurrencyConverter({
 
   // Validate and clean up loaded state when currency list is available
   useEffect(() => {
-    if (currencyList.length > 0) {
+    if (currencyList.length > 0) {
+
+
+
+
 
       // Clean up invalid currencies in fromCurrency
-      if (fromCurrency && !currencyList.includes(fromCurrency)) {
+      if (fromCurrency && !currencyList.includes(fromCurrency)) {
+
         setFromCurrency("");
       }
 
@@ -509,18 +540,24 @@ export default function MultiCurrencyConverter({
       const validTargets = conversionTargets.filter((target) =>
         currencyList.includes(target.currency)
       );
-
 
-      if (validTargets.length !== conversionTargets.length) {
+
+
+      if (validTargets.length !== conversionTargets.length) {
+
         setConversionTargets(validTargets);
-      } else {
+      } else {
+
       }
-
+
+
     }
   }, [currencyList, fromCurrency, conversionTargets]);
 
   // Save state whenever it changes
-  useEffect(() => {
+  useEffect(() => {
+
+
 
     // Add a small delay to avoid excessive saves during rapid changes
     const timeoutId = setTimeout(() => {
