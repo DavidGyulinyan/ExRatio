@@ -19,7 +19,6 @@ export default function DeleteAllButton({
 }: DeleteAllButtonProps) {
   const { t } = useLanguage();
 
-  // Theme colors
   const errorColor = useThemeColor({}, 'error');
   const textInverseColor = useThemeColor({}, 'textInverse');
   const shadowColor = '#000000'; // Use black for shadows

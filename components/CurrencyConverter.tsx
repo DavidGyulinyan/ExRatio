@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   TextInput,
@@ -20,7 +20,6 @@ import MathCalculator from "./MathCalculator";
 import CurrencyFlag from "./CurrencyFlag";
 import MultiCurrencyConverter from "./MultiCurrencyConverter";
 import AuthPromptModal from "./AuthPromptModal";
-import RateAlertManager from "./RateAlertManager";
 import notificationService from "@/lib/expoGoSafeNotificationService";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -37,27 +36,6 @@ import {
   displayDecimalToCanonical,
   formatGroupedNumber,
 } from "@/lib/numberFormat";
-
-interface AlertSettings {
-  targetRate: number;
-  direction: "above" | "below" | "equals";
-  isActive: boolean;
-  frequency: "hourly" | "daily";
-  lastChecked?: number;
-  triggered?: boolean;
-  triggeredAt?: number;
-  message?: string;
-}
-
-interface SavedRate {
-  id: string;
-  fromCurrency: string;
-  toCurrency: string;
-  rate: number;
-  timestamp: number;
-  hasAlert?: boolean;
-  alertSettings?: AlertSettings;
-}
 
 interface CurrencyConverterProps {
   onNavigateToDashboard?: () => void;
@@ -97,7 +75,6 @@ export default function CurrencyConverter({
   const [showToPicker, setShowToPicker] = useState<boolean>(false);
   const [showCalculator, setShowCalculator] = useState<boolean>(false);
   const [showMultiCurrency, setShowMultiCurrency] = useState<boolean>(false);
-  const [showRateAlerts, setShowRateAlerts] = useState<boolean>(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [multiCurrencyShowAllTargets, setMultiCurrencyShowAllTargets] =
@@ -106,14 +83,10 @@ export default function CurrencyConverter({
   const { user, formDraftResetEpoch } = useAuth();
   const {
     savedRates: { savedRates, saveRate },
-  } = useUserData();
-  const {
     pickedRates: { trackRate },
   } = useUserData();
-  const { currency: detectedCurrency, loading: locationLoading } =
-    usePreferredLocalCurrency();
+  const { currency: detectedCurrency } = usePreferredLocalCurrency();
 
-  // Theme colors
   const backgroundColor = useThemeColor({}, "background");
   const surfaceColor = useThemeColor({}, "surface");
   const surfaceSecondaryColor = useThemeColor({}, "surfaceSecondary");
@@ -123,371 +96,6 @@ export default function CurrencyConverter({
   const borderColor = useThemeColor({}, "border");
   const textInverseColor = useThemeColor({}, "textInverse");
   const accentColor = useThemeColor({}, "accent");
-
-  // Enhanced Auto-detect user's location and set default currency
-  const detectUserLocation = async () => {
-    try {
-      console.log("🔍 Checking for saved currency conversions...");
-
-      // Check for saved conversions first - PRIORITIZE SAVED DATA
-      const savedFromCurrency = await AsyncStorage.getItem(
-        "selectedFromCurrency"
-      );
-      const savedToCurrency = await AsyncStorage.getItem("selectedToCurrency");
-
-      if (
-        savedFromCurrency &&
-        savedToCurrency &&
-        currencyList.includes(savedFromCurrency) &&
-        currencyList.includes(savedToCurrency)
-      ) {
-        setFromCurrency(savedFromCurrency);
-        setToCurrency(savedToCurrency);
-        console.log(
-          `Using saved preferences: ${savedFromCurrency} → ${savedToCurrency}`
-        );
-        return; // Exit early - we have saved data!
-      }
-
-      console.log("🔍 No saved conversions found, detecting location...");
-
-      // Only clear saved preferences if no saved data exists
-      try {
-        await AsyncStorage.removeItem("selectedFromCurrency");
-        await AsyncStorage.removeItem("selectedToCurrency");
-        console.log(
-          "🧹 Cleared saved currency preferences to use detected location"
-        );
-      } catch (clearError) {
-        console.log("Could not clear saved preferences:", clearError);
-      }
-
-      // IMMEDIATE ARMENIA DETECTION for Armenian users
-      let detectedCurrency = "USD";
-      let detectionMethod = "default";
-      let countryName = "Unknown";
-
-      // Method 1: Direct timezone detection (most reliable for Armenia)
-      try {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        console.log(`🌍 Device timezone: ${timezone}`);
-
-        // Armenia timezone patterns (UTC+4)
-        if (
-          timezone &&
-          (timezone.includes("Asia/Yerevan") ||
-            timezone.includes("Asia/Dubai") || // Same timezone as Armenia
-            timezone.includes("Asia/Tbilisi") ||
-            timezone.includes("Asia/Baku"))
-        ) {
-          detectedCurrency = "AMD";
-          detectionMethod = "timezone";
-          countryName = "Armenia (detected)";
-          console.log(`🇦🇲 ARMENIA DETECTED via timezone: ${timezone} -> AMD`);
-        } else if (timezone.includes("America")) {
-          detectedCurrency = "USD";
-          detectionMethod = "timezone";
-          countryName = "United States (timezone)";
-          console.log(`🇺🇸 Detected via timezone: ${timezone} -> USD`);
-        } else if (timezone.includes("Europe") && !timezone.includes("Asia/")) {
-          detectedCurrency = "EUR";
-          detectionMethod = "timezone";
-          countryName = "Europe (timezone)";
-          console.log(`🇪🇺 Detected via timezone: ${timezone} -> EUR`);
-        }
-      } catch (tzError) {
-        console.log("Timezone detection failed:", tzError);
-      }
-
-      // Method 2: Try network location detection if timezone didn't give Armenia
-      if (detectedCurrency === "USD" && !countryName.includes("Armenia")) {
-        try {
-          console.log("🌐 Trying network-based location detection...");
-
-          // Create a timeout promise
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Network timeout")), 5000)
-          );
-
-          // Use a mobile-friendly service with AbortController for timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-          const fetchPromise = fetch(
-            "http://ip-api.com/json/?fields=countryCode,countryName",
-            {
-              signal: controller.signal,
-            }
-          );
-
-          const response = (await Promise.race([
-            fetchPromise,
-            timeoutPromise,
-          ])) as Response;
-          clearTimeout(timeoutId);
-
-          if (response.ok) {
-            const data = await response.json();
-            console.log("🌐 Network location response:", data);
-
-            const countryCode = data.countryCode || data.country_code;
-            const country = data.countryName || data.country;
-
-            if (countryCode === "AM") {
-              detectedCurrency = "AMD";
-              detectionMethod = "network";
-              countryName = country || "Armenia";
-              console.log(
-                `🇦🇲 ARMENIA DETECTED via network: ${country} (${countryCode}) -> AMD`
-              );
-            } else if (countryCode) {
-              // Country to currency mapping for network detection
-              const countryToCurrency: { [key: string]: string } = {
-                US: "USD",
-                CA: "CAD",
-                MX: "MXN",
-                GB: "GBP",
-                DE: "EUR",
-                FR: "EUR",
-                IT: "EUR",
-                ES: "EUR",
-                NL: "EUR",
-                JP: "JPY",
-                CN: "CNY",
-                KR: "KRW",
-                IN: "INR",
-                AU: "AUD",
-                NZ: "NZD",
-                CH: "CHF",
-                NO: "NOK",
-                SE: "SEK",
-                DK: "DKK",
-                PL: "PLN",
-                CZ: "CZK",
-                HU: "HUF",
-                RO: "RON",
-                BG: "BGN",
-                BR: "BRL",
-                AR: "ARS",
-                CL: "CLP",
-                CO: "COP",
-                PE: "PEN",
-                TH: "THB",
-                MY: "MYR",
-                SG: "SGD",
-                HK: "HKD",
-                TW: "TWD",
-                ID: "IDR",
-                PH: "PHP",
-                VN: "VND",
-                SA: "SAR",
-                AE: "AED",
-                TR: "TRY",
-                GE: "GEL",
-                AZ: "AZN",
-                ZA: "ZAR",
-                NG: "NGN",
-                EG: "EGP",
-                MA: "MAD",
-                KE: "KES",
-              };
-
-              detectedCurrency = countryToCurrency[countryCode] || "USD";
-              detectionMethod = "network";
-              countryName = country || countryCode;
-              console.log(
-                `✅ Network detection: ${country} (${countryCode}) -> ${detectedCurrency}`
-              );
-            }
-          } else {
-            console.log("Network location request failed:", response.status);
-          }
-        } catch (networkError) {
-          console.log("Network location detection failed:", networkError);
-        }
-      }
-
-      // Method 3: Final fallback - force Armenia for Armenia timezone if still USD
-      if (detectedCurrency === "USD") {
-        try {
-          const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          if (timezone && timezone.includes("Asia/")) {
-            // If we're in Asia timezone and still haven't detected Armenia specifically,
-            // but the user is likely Armenian based on the issue report
-            detectedCurrency = "AMD";
-            detectionMethod = "fallback";
-            countryName = "Armenia (fallback)";
-            console.log(
-              `🇦🇲 FALLBACK: Detected Asia timezone, defaulting to AMD for Armenian user`
-            );
-          }
-        } catch (fallbackError) {
-          console.log("Fallback detection failed:", fallbackError);
-        }
-      }
-
-      // Set the currency pair: USD -> detected currency
-      setFromCurrency("USD");
-      setToCurrency(detectedCurrency);
-      console.log(
-        `✅ FINAL RESULT: USD → ${detectedCurrency} (${detectionMethod} method)`
-      );
-      console.log(`🌍 Country: ${countryName}`);
-
-      // Store detection result for debugging
-      try {
-        await AsyncStorage.setItem(
-          "detectedLocation",
-          JSON.stringify({
-            country: countryName,
-            currency: detectedCurrency,
-            method: detectionMethod,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            timestamp: Date.now(),
-          })
-        );
-      } catch (storageError) {
-        console.log("Failed to store detection result:", storageError);
-      }
-    } catch (error) {
-      console.error("❌ Location detection failed:", error);
-
-      // IMMEDIATE ARMENIA DETECTION - Skip complex fallbacks
-      // Since this is specifically for Armenian users having issues, let's detect Armenia directly
-
-      // Check for saved preferences first
-      const savedFromCurrency = await AsyncStorage.getItem(
-        "selectedFromCurrency"
-      );
-      const savedToCurrency = await AsyncStorage.getItem("selectedToCurrency");
-
-      if (savedFromCurrency && savedToCurrency) {
-        setFromCurrency(savedFromCurrency);
-        setToCurrency(savedToCurrency);
-        console.log(
-          `💾 Using saved preferences: ${savedFromCurrency} → ${savedToCurrency}`
-        );
-      } else {
-        // SIMPLIFIED ARMENIA DETECTION - React Native Compatible
-        let detectedCurrency = "USD";
-        let isArmeniaDetected = false;
-
-        try {
-          // Method 1: Check timezone offset (Armenia is UTC+4 = -240 minutes)
-          const now = new Date();
-          const timezoneOffset = now.getTimezoneOffset();
-          console.log(`🕒 Timezone offset: ${timezoneOffset}`);
-
-          // Armenia timezone offset is -240 (UTC+4), some systems might show -300 (UTC+5)
-          if (timezoneOffset === -240 || timezoneOffset === -300) {
-            detectedCurrency = "AMD";
-            isArmeniaDetected = true;
-            console.log(
-              `🇦🇲 Detected Armenia through timezone offset: ${timezoneOffset}`
-            );
-          }
-        } catch (offsetError) {
-          console.log(`Timezone offset detection failed:`, offsetError);
-        }
-
-        // Method 2: Safe timezone check (React Native compatible)
-        if (!isArmeniaDetected) {
-          try {
-            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            console.log(`🌍 Timezone: ${timezone}`);
-
-            // Armenia timezone patterns
-            if (
-              timezone &&
-              (timezone.includes("Asia/Yerevan") ||
-                timezone.includes("Asia/Dubai") || // Same timezone as Armenia
-                timezone.includes("Asia/Tbilisi") ||
-                timezone.includes("Asia/Tehran"))
-            ) {
-              detectedCurrency = "AMD";
-              isArmeniaDetected = true;
-              console.log(`🇦🇲 Detected Armenia through timezone: ${timezone}`);
-            }
-          } catch (tzError) {
-            console.log(`Timezone detection failed:`, tzError);
-          }
-        }
-
-        // Method 3: Device locale check (safer for React Native)
-        if (!isArmeniaDetected) {
-          try {
-            const deviceLocale = Intl.DateTimeFormat().resolvedOptions().locale;
-            console.log(`🌏 Device locale: ${deviceLocale}`);
-
-            if (
-              deviceLocale &&
-              (deviceLocale.includes("hy") ||
-                deviceLocale.includes("AM") ||
-                deviceLocale.toLowerCase().includes("armenia") ||
-                deviceLocale.includes("arm"))
-            ) {
-              detectedCurrency = "AMD";
-              isArmeniaDetected = true;
-              console.log(
-                `🇦🇲 Detected Armenia through locale: ${deviceLocale}`
-              );
-            }
-          } catch (localeError) {
-            console.log(`Locale detection failed:`, localeError);
-          }
-        }
-
-        // Method 4: Check for browser language (with fallback for React Native)
-        if (!isArmeniaDetected) {
-          try {
-            const browserLang =
-              typeof navigator !== "undefined" && navigator.language
-                ? navigator.language
-                : "en-US";
-            console.log(`🌐 Language: ${browserLang}`);
-
-            if (browserLang && browserLang.includes("hy")) {
-              detectedCurrency = "AMD";
-              isArmeniaDetected = true;
-              console.log(
-                `🇦🇲 Detected Armenia through language: ${browserLang}`
-              );
-            }
-          } catch (langError) {
-            console.log(`Language detection failed:`, langError);
-          }
-        }
-
-        // FINAL DECISION: If no Armenia detected, default to Armenia for Armenia timezone users
-        if (!isArmeniaDetected) {
-          // For Armenia timezone users who can't be detected, default to AMD
-          // This is the safest default for Armenian users
-          try {
-            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            if (timezone && timezone.includes("Asia/")) {
-              detectedCurrency = "AMD";
-              console.log(
-                `🇦🇲 Defaulting to AMD for Asia timezone: ${timezone}`
-              );
-            }
-          } catch (defaultError) {
-            // If all else fails, still default to AMD since this is specifically for Armenia users
-            detectedCurrency = "AMD";
-            console.log(
-              `🇦🇲 Final fallback: Defaulting to AMD for Armenian users`
-            );
-          }
-        }
-
-        // Set the currencies
-        setFromCurrency("USD");
-        setToCurrency(detectedCurrency);
-        console.log(
-          `✅ Final result: USD → ${detectedCurrency} (Armenia mode)`
-        );
-      }
-    }
-  };
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -1452,25 +1060,6 @@ export default function CurrencyConverter({
           }}
           showAllTargets={multiCurrencyShowAllTargets}
           onShowMore={() => setMultiCurrencyShowAllTargets(true)}
-        />
-      )}
-
-      {/* Rate Alert Manager Section */}
-      {showRateAlerts && (
-        <RateAlertManager
-          savedRates={savedRates.map((rate) => ({
-            id: rate.id,
-            fromCurrency: rate.from_currency,
-            toCurrency: rate.to_currency,
-            rate: rate.rate,
-            timestamp: new Date(rate.created_at).getTime(),
-            hasAlert: false, // This might need to be updated based on actual alert data
-            alertSettings: undefined,
-          }))}
-          onRatesUpdate={() => {
-            // The hook will automatically update when rates change
-          }}
-          currenciesData={currenciesData}
         />
       )}
 

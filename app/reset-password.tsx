@@ -29,7 +29,6 @@ export default function ResetPasswordScreen() {
 
   const backgroundColor = useThemeColor({}, "background");
   const surfaceColor = useThemeColor({}, "surface");
-  const surfaceSecondaryColor = useThemeColor({}, "surfaceSecondary");
   const primaryColor = useThemeColor({}, "primary");
   const accentColor = useThemeColor({}, "accent");
   const textColor = useThemeColor({}, "text");
@@ -122,16 +121,7 @@ export default function ResetPasswordScreen() {
         backLink: { marginTop: 18, padding: 8 },
         backText: { color: primaryColor, fontWeight: "600", fontSize: 14 },
       }),
-    [
-      backgroundColor,
-      borderColor,
-      primaryColor,
-      accentColor,
-      surfaceColor,
-      surfaceSecondaryColor,
-      textColor,
-      textSecondaryColor,
-    ]
+    [backgroundColor, borderColor, primaryColor, surfaceColor, textColor, textSecondaryColor]
   );
 
   const handleUpdatePassword = async () => {

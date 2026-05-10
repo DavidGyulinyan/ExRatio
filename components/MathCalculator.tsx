@@ -78,7 +78,7 @@ export default function MathCalculator({
   toolsMenuItems,
 }: MathCalculatorProps) {
   const { user } = useAuth();
-  const { calculatorHistory: supabaseHistory, saveCalculation, clearAllCalculations, loading: historyLoading } = useCalculatorHistory();
+  const { calculatorHistory: supabaseHistory, saveCalculation, clearAllCalculations } = useCalculatorHistory();
   const { t, tWithParams } = useLanguage();
   const backgroundColor = useThemeColor({}, "background");
   const surfaceColor = useThemeColor({}, "surface");
@@ -350,17 +350,6 @@ export default function MathCalculator({
     setOperation(null);
     setWaitingForOperand(false);
     setCalculationComplete(false);
-  };
-
-  const clearAll = () => {
-    safeHaptic("light");
-    setDisplay("0");
-    setEquation("");
-    setPreviousValue(null);
-    setOperation(null);
-    setWaitingForOperand(false);
-    setCalculationComplete(false);
-    setCalculationHistory([]);
   };
 
   const inputDecimal = () => {

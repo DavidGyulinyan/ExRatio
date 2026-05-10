@@ -7,4 +7,10 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*'],
   },
+  {
+    files: ['components/ui/icon-symbol.tsx', 'components/ui/icon-symbol.ios.tsx'],
+    rules: {
+      'import/no-unresolved': 'off',
+    },
+  },
 ]);

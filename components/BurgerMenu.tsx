@@ -51,7 +51,6 @@ export default function BurgerMenu({ style, quickActions }: BurgerMenuProps) {
      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
    };
 
-   // Theme colors
    const primaryColor = useThemeColor({}, 'primary');
    const surfaceColor = useThemeColor({}, 'surface');
    const surfaceSecondaryColor = useThemeColor({}, 'surfaceSecondary');
@@ -66,7 +65,7 @@ export default function BurgerMenu({ style, quickActions }: BurgerMenuProps) {
       await signOut();
       setIsVisible(false);
       Alert.alert(t('auth.signoutSuccess'));
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   };

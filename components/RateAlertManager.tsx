@@ -18,7 +18,6 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useRateAlerts } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
-import alertCheckerService from "@/lib/alertCheckerService";
 import { getAsyncStorage } from "@/lib/storage";
 import { FormField } from "@/constants/theme";
 import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
@@ -65,7 +64,6 @@ export default function RateAlertManager({
   const { user } = useAuth();
   const { rateAlerts, loading, createAlert, updateAlert, deleteAlert, error } = useRateAlerts();
 
-  // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
   const surfaceSecondaryColor = useThemeColor({}, 'surfaceSecondary');

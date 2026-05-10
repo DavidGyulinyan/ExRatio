@@ -12,7 +12,7 @@ import RateAlertManager from "@/components/RateAlertManager";
 import MathCalculator from "@/components/MathCalculator";
 import LoanCalculator from "@/components/LoanCalculator";
 import OnboardingGuide from "@/components/OnboardingGuide";
-import SortableQuickTile from "@/components/SortableQuickTile";
+import DashboardSortableTileGrid from "@/components/DashboardSortableTileGrid";
 import CurrencyRateCharts from "@/components/CurrencyRateCharts";
 import ArmeniaFinanceModal, {
   type FinanceScreen,
@@ -30,10 +30,10 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUserData } from "@/hooks/useUserData";
+import { normalizeDashboardCardOrder } from "@/lib/dashboardCardOrder";
 import { getAsyncStorage } from "@/lib/storage";
 import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
 import { hexToRgba } from "@/constants/theme";
-import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -41,15 +41,32 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   Alert,
   type LayoutChangeEvent,
+  LayoutAnimation,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  UIManager,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Popular currencies for multi-currency conversion - moved outside component to avoid re-renders
+function runDashboardReorderLayoutAnimation() {
+  if (Platform.OS === "android") {
+    UIManager.setLayoutAnimationEnabledExperimental?.(true);
+  }
+  LayoutAnimation.configureNext({
+    duration: 420,
+    update: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+    },
+  });
+}
+
+/** Min finger movement before grid tiles may swap (avoids jerk on initial touch noise). */
+const DASHBOARD_DRAG_REORDER_ACTIVATION_PX = 14;
+
 const POPULAR_CURRENCIES = [
   "AMD",
   "RUB",
@@ -94,27 +111,6 @@ const DEFAULT_QUICK_ACTION_ORDER: DashboardQuickActionId[] = [
   ...QUICK_ACTION_ORDER_DEFAULT,
 ];
 
-function normalizeQuickActionOrder(raw: unknown): DashboardQuickActionId[] {
-  const allowed = new Set<string>(DEFAULT_QUICK_ACTION_ORDER);
-  if (!Array.isArray(raw)) return [...DEFAULT_QUICK_ACTION_ORDER];
-  const seen = new Set<string>();
-  const out: DashboardQuickActionId[] = [];
-  for (const x of raw) {
-    if (
-      typeof x === "string" &&
-      allowed.has(x) &&
-      !seen.has(x)
-    ) {
-      seen.add(x);
-      out.push(x as DashboardQuickActionId);
-    }
-  }
-  for (const id of DEFAULT_QUICK_ACTION_ORDER) {
-    if (!seen.has(id)) out.push(id);
-  }
-  return out;
-}
-
 const AM_FINANCE_CARDS_STORAGE_KEY = "dashboardAmFinanceCardsOrderV1";
 
 const AM_FINANCE_CARD_ORDER_DEFAULT = [
@@ -132,23 +128,6 @@ const DEFAULT_AM_FINANCE_CARD_ORDER: AmFinanceCardId[] = [
   ...AM_FINANCE_CARD_ORDER_DEFAULT,
 ];
 
-function normalizeAmFinanceCardOrder(raw: unknown): AmFinanceCardId[] {
-  const allowed = new Set<string>(DEFAULT_AM_FINANCE_CARD_ORDER);
-  if (!Array.isArray(raw)) return [...DEFAULT_AM_FINANCE_CARD_ORDER];
-  const seen = new Set<string>();
-  const out: AmFinanceCardId[] = [];
-  for (const x of raw) {
-    if (typeof x === "string" && allowed.has(x) && !seen.has(x)) {
-      seen.add(x);
-      out.push(x as AmFinanceCardId);
-    }
-  }
-  for (const id of DEFAULT_AM_FINANCE_CARD_ORDER) {
-    if (!seen.has(id)) out.push(id);
-  }
-  return out;
-}
-
 const AM_TRANSPORT_CARDS_STORAGE_KEY = "dashboardAmTransportCardsOrderV1";
 
 const AM_TRANSPORT_CARD_ORDER_DEFAULT = ["tmCustoms", "tmDeal"] as const;
@@ -159,33 +138,14 @@ const DEFAULT_AM_TRANSPORT_CARD_ORDER: AmTransportCardId[] = [
   ...AM_TRANSPORT_CARD_ORDER_DEFAULT,
 ];
 
-function normalizeAmTransportCardOrder(raw: unknown): AmTransportCardId[] {
-  const allowed = new Set<string>(DEFAULT_AM_TRANSPORT_CARD_ORDER);
-  if (!Array.isArray(raw)) return [...DEFAULT_AM_TRANSPORT_CARD_ORDER];
-  const seen = new Set<string>();
-  const out: AmTransportCardId[] = [];
-  for (const x of raw) {
-    if (typeof x === "string" && allowed.has(x) && !seen.has(x)) {
-      seen.add(x);
-      out.push(x as AmTransportCardId);
-    }
-  }
-  for (const id of DEFAULT_AM_TRANSPORT_CARD_ORDER) {
-    if (!seen.has(id)) out.push(id);
-  }
-  return out;
-}
-
 export default function HomeScreen() {
   const { t } = useLanguage();
-  const router = useRouter();
-  const { user, signOut, formDraftResetEpoch } = useAuth();
+  const { user, formDraftResetEpoch } = useAuth();
   const {
     savedRates: { savedRates, deleteRate, deleteAllRates, refreshRates },
-    rateAlerts: { rateAlerts, refreshAlerts },
+    rateAlerts: { refreshAlerts },
   } = useUserData();
 
-  // Theme colors - must be called at top level
   const primaryColor = useThemeColor({}, "primary");
   const textInverseColor = useThemeColor({}, "textInverse");
   const pageBackgroundColor = useThemeColor({}, "background");
@@ -228,14 +188,13 @@ export default function HomeScreen() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [currenciesData, setCurrenciesData] = useState<any>(null);
   const [currencyList, setCurrencyList] = useState<string[]>([]);
-  const [multiCurrencyLoading, setMultiCurrencyLoading] = useState(false);
   const [savedRatesMaxVisible, setSavedRatesMaxVisible] = useState(4);
   const [refreshing, setRefreshing] = useState(false);
 
   const [quickActionOrder, setQuickActionOrder] = useState<
     DashboardQuickActionId[]
   >(() => [...DEFAULT_QUICK_ACTION_ORDER]);
-  const [quickActionReorderMode, setQuickActionReorderMode] = useState(false);
+  const [dashboardReorderMode, setDashboardReorderMode] = useState(false);
   const [quickActionDraggingId, setQuickActionDraggingId] =
     useState<DashboardQuickActionId | null>(null);
   const [dashboardCardOrdersHydrated, setDashboardCardOrdersHydrated] =
@@ -253,7 +212,6 @@ export default function HomeScreen() {
   const [amFinanceCardOrder, setAmFinanceCardOrder] = useState<
     AmFinanceCardId[]
   >(() => [...DEFAULT_AM_FINANCE_CARD_ORDER]);
-  const [amFinanceReorderMode, setAmFinanceReorderMode] = useState(false);
   const [amFinanceDraggingId, setAmFinanceDraggingId] =
     useState<AmFinanceCardId | null>(null);
   const amFinanceGridRef = useRef<View | null>(null);
@@ -269,7 +227,6 @@ export default function HomeScreen() {
   const [amTransportCardOrder, setAmTransportCardOrder] = useState<
     AmTransportCardId[]
   >(() => [...DEFAULT_AM_TRANSPORT_CARD_ORDER]);
-  const [amTransportReorderMode, setAmTransportReorderMode] = useState(false);
   const [amTransportDraggingId, setAmTransportDraggingId] =
     useState<AmTransportCardId | null>(null);
   const amTransportGridRef = useRef<View | null>(null);
@@ -282,6 +239,15 @@ export default function HomeScreen() {
   const amTransportTileStepRef = useRef(128);
   const amTransportDragIndexRef = useRef<number | null>(null);
 
+  /** First move after grab; ignore swaps until finger moves past this (avoids snap + LayoutAnimation on touch-down). */
+  const dashboardDragReorderOriginRef = useRef<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const resetDashboardDragReorderOrigin = useCallback(() => {
+    dashboardDragReorderOriginRef.current = null;
+  }, []);
+
   const clearDashboardDragState = useCallback(() => {
     setQuickActionDraggingId(null);
     setAmFinanceDraggingId(null);
@@ -289,17 +255,13 @@ export default function HomeScreen() {
     quickActionDragIndexRef.current = null;
     amFinanceDragIndexRef.current = null;
     amTransportDragIndexRef.current = null;
+    dashboardDragReorderOriginRef.current = null;
   }, []);
 
-  const setExclusiveReorderMode = useCallback(
-    (section: "quick" | "finance" | "transport" | null) => {
-      setQuickActionReorderMode(section === "quick");
-      setAmFinanceReorderMode(section === "finance");
-      setAmTransportReorderMode(section === "transport");
-      clearDashboardDragState();
-    },
-    [clearDashboardDragState]
-  );
+  const toggleDashboardReorderMode = useCallback(() => {
+    setDashboardReorderMode((prev) => !prev);
+    clearDashboardDragState();
+  }, [clearDashboardDragState]);
 
   const closeAllQuickModals = useCallback(() => {
     setShowConverter(false);
@@ -375,6 +337,44 @@ export default function HomeScreen() {
     },
     [closeAllQuickModals]
   );
+
+  const loadExchangeRates = useCallback(async () => {
+    try {
+      const storage = getAsyncStorage();
+      const cachedData = await storage.getItem("cachedExchangeRates");
+      if (cachedData) {
+        const data = JSON.parse(cachedData);
+        setCurrenciesData(data);
+        setCurrencyList(fiatKeysFromConversionRates(data.conversion_rates));
+      } else {
+        setCurrencyList(POPULAR_CURRENCIES);
+      }
+    } catch (error) {
+      console.error("Error loading cached rates:", error);
+      setCurrencyList(POPULAR_CURRENCIES);
+    }
+  }, []);
+
+  const checkOnboardingStatus = useCallback(async () => {
+    try {
+      const onboardingCompleted = await AsyncStorage.getItem(
+        "onboardingCompleted"
+      );
+
+      const shouldShowOnboarding =
+        !onboardingCompleted ||
+        (user &&
+          user.created_at &&
+          Date.now() - new Date(user.created_at).getTime() <
+            24 * 60 * 60 * 1000);
+
+      if (shouldShowOnboarding && user) {
+        setShowOnboarding(true);
+      }
+    } catch (error) {
+      console.error("Failed to check onboarding status:", error);
+    }
+  }, [user]);
 
   const quickToolsMenu = useCallback(
     (excludeId: string): QuickActionModalMenuItem[] => {
@@ -471,7 +471,7 @@ export default function HomeScreen() {
       ];
       return items.filter((item) => item.id !== excludeId);
     },
-    [closeAllQuickModals, t, openArmeniaFinance, openArmeniaTransport]
+    [closeAllQuickModals, t, openArmeniaFinance]
   );
 
   const burgerQuickActions = useMemo(
@@ -633,6 +633,16 @@ export default function HomeScreen() {
     return defs;
   }, [openArmeniaTransport]);
 
+  const dashboardTileGridStyles = useMemo(
+    () => ({
+      quickActionsGrid: styles.quickActionsGrid,
+      quickTile: styles.quickTile,
+      quickTileIconWrap: styles.quickTileIconWrap,
+      quickTileLabel: styles.quickTileLabel,
+    }),
+    []
+  );
+
   const remeasureQuickActionGrid = useCallback(() => {
     requestAnimationFrame(() => {
       quickActionGridRef.current?.measureInWindow((x, y, w) => {
@@ -665,6 +675,16 @@ export default function HomeScreen() {
       if (!m) return;
       const from = quickActionDragIndexRef.current;
       if (from === null) return;
+      if (dashboardDragReorderOriginRef.current === null) {
+        dashboardDragReorderOriginRef.current = { x: pageX, y: pageY };
+        return;
+      }
+      const o = dashboardDragReorderOriginRef.current;
+      if (
+        Math.hypot(pageX - o.x, pageY - o.y) < DASHBOARD_DRAG_REORDER_ACTIVATION_PX
+      ) {
+        return;
+      }
       const relX = pageX - m.pageX;
       const relY = pageY - m.pageY;
       if (relY < -24) return;
@@ -674,6 +694,7 @@ export default function HomeScreen() {
         let target = row * 2 + col;
         target = Math.min(Math.max(target, 0), prev.length - 1);
         if (target === from) return prev;
+        runDashboardReorderLayoutAnimation();
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         const next = [...prev];
         const [item] = next.splice(from, 1);
@@ -717,6 +738,16 @@ export default function HomeScreen() {
       if (!m) return;
       const from = amFinanceDragIndexRef.current;
       if (from === null) return;
+      if (dashboardDragReorderOriginRef.current === null) {
+        dashboardDragReorderOriginRef.current = { x: pageX, y: pageY };
+        return;
+      }
+      const o = dashboardDragReorderOriginRef.current;
+      if (
+        Math.hypot(pageX - o.x, pageY - o.y) < DASHBOARD_DRAG_REORDER_ACTIVATION_PX
+      ) {
+        return;
+      }
       const relX = pageX - m.pageX;
       const relY = pageY - m.pageY;
       if (relY < -24) return;
@@ -726,6 +757,7 @@ export default function HomeScreen() {
         let target = row * 2 + col;
         target = Math.min(Math.max(target, 0), prev.length - 1);
         if (target === from) return prev;
+        runDashboardReorderLayoutAnimation();
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         const next = [...prev];
         const [item] = next.splice(from, 1);
@@ -769,6 +801,16 @@ export default function HomeScreen() {
       if (!m) return;
       const from = amTransportDragIndexRef.current;
       if (from === null) return;
+      if (dashboardDragReorderOriginRef.current === null) {
+        dashboardDragReorderOriginRef.current = { x: pageX, y: pageY };
+        return;
+      }
+      const o = dashboardDragReorderOriginRef.current;
+      if (
+        Math.hypot(pageX - o.x, pageY - o.y) < DASHBOARD_DRAG_REORDER_ACTIVATION_PX
+      ) {
+        return;
+      }
       const relX = pageX - m.pageX;
       const relY = pageY - m.pageY;
       if (relY < -24) return;
@@ -778,6 +820,7 @@ export default function HomeScreen() {
         let target = row * 2 + col;
         target = Math.min(Math.max(target, 0), prev.length - 1);
         if (target === from) return prev;
+        runDashboardReorderLayoutAnimation();
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         const next = [...prev];
         const [item] = next.splice(from, 1);
@@ -801,17 +844,26 @@ export default function HomeScreen() {
         if (cancelled) return;
         if (qaRaw) {
           setQuickActionOrder(
-            normalizeQuickActionOrder(JSON.parse(qaRaw) as unknown)
+            normalizeDashboardCardOrder(
+              JSON.parse(qaRaw) as unknown,
+              DEFAULT_QUICK_ACTION_ORDER
+            )
           );
         }
         if (finRaw) {
           setAmFinanceCardOrder(
-            normalizeAmFinanceCardOrder(JSON.parse(finRaw) as unknown)
+            normalizeDashboardCardOrder(
+              JSON.parse(finRaw) as unknown,
+              DEFAULT_AM_FINANCE_CARD_ORDER
+            )
           );
         }
         if (trRaw) {
           setAmTransportCardOrder(
-            normalizeAmTransportCardOrder(JSON.parse(trRaw) as unknown)
+            normalizeDashboardCardOrder(
+              JSON.parse(trRaw) as unknown,
+              DEFAULT_AM_TRANSPORT_CARD_ORDER
+            )
           );
         }
       } catch {
@@ -850,91 +902,24 @@ export default function HomeScreen() {
   }, [dashboardCardOrdersHydrated, amTransportCardOrder]);
 
   useEffect(() => {
-    loadExchangeRates();
-    checkOnboardingStatus();
-  }, [user]);
+    void loadExchangeRates();
+    void checkOnboardingStatus();
+  }, [user, loadExchangeRates, checkOnboardingStatus]);
 
-  // Refresh saved rates when the modal opens
   useEffect(() => {
-    if (showSavedRates) {
-      refreshRates();
-    }
-  }, [showSavedRates, refreshRates]);
-
-  // Refresh rate alerts when the modal opens
-  useEffect(() => {
-    if (showRateAlerts) {
-      refreshAlerts();
-    }
-  }, [showRateAlerts, refreshAlerts]);
-
-  // Refresh data when modals close
-  useEffect(() => {
-    if (!showSavedRates) {
-      refreshRates();
-    }
+    refreshRates();
   }, [showSavedRates, refreshRates]);
 
   useEffect(() => {
-    if (!showRateAlerts) {
-      refreshAlerts();
-    }
+    refreshAlerts();
   }, [showRateAlerts, refreshAlerts]);
 
-  // Refresh data when switching back to dashboard view
   useEffect(() => {
     if (currentView === "dashboard") {
       refreshRates();
       refreshAlerts();
     }
   }, [currentView, refreshRates, refreshAlerts]);
-
-  const checkOnboardingStatus = async () => {
-    try {
-      const onboardingCompleted = await AsyncStorage.getItem(
-        "onboardingCompleted"
-      );
-
-      // Show onboarding if:
-      // 1. User hasn't completed onboarding, OR
-      // 2. User account was created very recently (within last 24 hours)
-      const shouldShowOnboarding =
-        !onboardingCompleted ||
-        (user &&
-          user.created_at &&
-          Date.now() - new Date(user.created_at).getTime() <
-            24 * 60 * 60 * 1000);
-
-      if (shouldShowOnboarding && user) {
-        setShowOnboarding(true);
-      }
-    } catch (error) {
-      console.error("Failed to check onboarding status:", error);
-    }
-  };
-
-  const loadExchangeRates = async () => {
-    try {
-      setMultiCurrencyLoading(true);
-      const storage = getAsyncStorage();
-      const cachedData = await storage.getItem("cachedExchangeRates");
-      if (cachedData) {
-        const data = JSON.parse(cachedData);
-        setCurrenciesData(data);
-        setCurrencyList(fiatKeysFromConversionRates(data.conversion_rates));
-        console.log("📦 Loaded cached exchange rates for multi-currency");
-      } else {
-        // Set default currencies if no cached data
-        setCurrencyList(POPULAR_CURRENCIES);
-        console.log("💡 No cached data available for multi-currency");
-      }
-    } catch (error) {
-      console.error("Error loading cached rates:", error);
-      setCurrencyList(POPULAR_CURRENCIES);
-    } finally {
-      setMultiCurrencyLoading(false);
-    }
-  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -982,7 +967,6 @@ export default function HomeScreen() {
       );
     }
 
-    // Dashboard view with widget system
     return (
       <ThemedView style={styles.dashboardContainer}>
         <View
@@ -998,8 +982,58 @@ export default function HomeScreen() {
             <View style={styles.heroBlock}>
               <Logo size={40} showText={false} />
             </View>
-            <BurgerMenu quickActions={burgerQuickActions} />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  dashboardReorderMode
+                    ? t("dashboard.finishReorder")
+                    : t("dashboard.reorderCards")
+                }
+                activeOpacity={0.85}
+                onPress={toggleDashboardReorderMode}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  borderWidth: dashboardReorderMode ? 2 : 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderColor: primaryColor,
+                  backgroundColor: dashboardReorderMode
+                    ? hexToRgba(primaryColor, 0.16)
+                    : hexToRgba(primaryColor, 0.09),
+                }}
+              >
+                <Ionicons
+                  name={
+                    dashboardReorderMode ? "checkmark-circle" : "swap-vertical"
+                  }
+                  size={22}
+                  color={primaryColor}
+                />
+              </TouchableOpacity>
+              <BurgerMenu quickActions={burgerQuickActions} />
+            </View>
           </View>
+          {dashboardReorderMode ? (
+            <ThemedText
+              type="caption"
+              style={{
+                color: textSecondaryColor,
+                marginTop: 8,
+                lineHeight: 18,
+              }}
+            >
+              {t("dashboard.reorderCardsHint")}
+            </ThemedText>
+          ) : null}
         </View>
 
         <ScrollView
@@ -1007,11 +1041,7 @@ export default function HomeScreen() {
           contentContainerStyle={styles.scrollContentContainer}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
-          scrollEnabled={
-            !quickActionDraggingId &&
-            !amFinanceDraggingId &&
-            !amTransportDraggingId
-          }
+          scrollEnabled
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -1019,11 +1049,7 @@ export default function HomeScreen() {
           <View style={styles.quickActionsContainer}>
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                marginBottom: quickActionReorderMode ? 8 : 14,
+                marginBottom: dashboardReorderMode ? 8 : 14,
               }}
             >
               <ThemedText
@@ -1033,159 +1059,40 @@ export default function HomeScreen() {
                   {
                     color: textColor,
                     marginBottom: 0,
-                    flex: 1,
-                    minWidth: 0,
                   },
                 ]}
               >
                 {t("dashboard.quickActions")}
               </ThemedText>
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={
-                  quickActionReorderMode
-                    ? t("dashboard.finishReorder")
-                    : t("dashboard.reorderCards")
-                }
-                activeOpacity={0.85}
-                onPress={() => {
-                  if (quickActionReorderMode) setExclusiveReorderMode(null);
-                  else setExclusiveReorderMode("quick");
-                }}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  borderWidth: quickActionReorderMode ? 2 : 0,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderColor: primaryColor,
-                  backgroundColor: quickActionReorderMode
-                    ? hexToRgba(primaryColor, 0.16)
-                    : hexToRgba(primaryColor, 0.09),
-                }}
-              >
-                <Ionicons
-                  name={
-                    quickActionReorderMode ? "checkmark-circle" : "swap-vertical"
-                  }
-                  size={22}
-                  color={primaryColor}
-                />
-              </TouchableOpacity>
             </View>
-            {quickActionReorderMode ? (
-              <ThemedText
-                type="caption"
-                style={{
-                  color: textSecondaryColor,
-                  marginBottom: 12,
-                  lineHeight: 18,
-                }}
-              >
-                {t("dashboard.reorderCardsHint")}
-              </ThemedText>
-            ) : null}
-            <View
-              ref={quickActionGridRef}
-              collapsable={false}
-              onLayout={remeasureQuickActionGrid}
-              style={styles.quickActionsGrid}
-            >
-              {quickActionOrder.map((actionId, index) => {
-                const item = dashboardQuickActionDefs[actionId];
-                const tileInner = (
-                  <>
-                    <View
-                      style={[
-                        styles.quickTileIconWrap,
-                        {
-                          backgroundColor: item.active
-                            ? hexToRgba(primaryColor, 0.14)
-                            : "transparent",
-                          borderWidth: 1,
-                          borderColor: item.active
-                            ? hexToRgba(primaryColor, 0.45)
-                            : hexToRgba(borderColor, 0.55),
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name={item.icon}
-                        size={24}
-                        color={
-                          item.active ? primaryColor : textSecondaryColor
-                        }
-                      />
-                    </View>
-                    <ThemedText
-                      type="caption"
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
-                      style={[
-                        styles.quickTileLabel,
-                        {
-                          color: textColor,
-                          paddingRight: quickActionReorderMode ? 22 : 0,
-                        },
-                      ]}
-                    >
-                      {t(item.labelKey)}
-                    </ThemedText>
-                  </>
-                );
-
-                return (
-                  <SortableQuickTile
-                    key={actionId}
-                    reorderMode={quickActionReorderMode}
-                    isDragging={quickActionDraggingId === actionId}
-                    handleColor={textSecondaryColor}
-                    onDragStart={() => {
-                      quickActionDragIndexRef.current = index;
-                      setQuickActionDraggingId(actionId);
-                    }}
-                    onDragMove={handleQuickActionDragMove}
-                    onDragEnd={() => {
-                      setQuickActionDraggingId(null);
-                      quickActionDragIndexRef.current = null;
-                    }}
-                    style={[
-                      styles.quickTile,
-                      {
-                        backgroundColor: item.active
-                          ? hexToRgba(primaryColor, 0.22)
-                          : hexToRgba(pageBackgroundColor, 0.52),
-                        borderColor: item.active ? primaryColor : borderColor,
-                        borderWidth: item.active ? 2 : 1,
-                      },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={quickActionReorderMode}
-                      onLayout={
-                        index === 0 ? onQuickActionTileLayout : undefined
-                      }
-                      style={{ flex: 1 }}
-                      onPress={item.onPress}
-                    >
-                      {tileInner}
-                    </TouchableOpacity>
-                  </SortableQuickTile>
-                );
-              })}
-            </View>
+            <DashboardSortableTileGrid
+              order={quickActionOrder}
+              defs={dashboardQuickActionDefs}
+              reorderMode={dashboardReorderMode}
+              draggingId={quickActionDraggingId}
+              onDraggingIdChange={setQuickActionDraggingId}
+              dragIndexRef={quickActionDragIndexRef}
+              gridRef={quickActionGridRef}
+              onGridLayout={remeasureQuickActionGrid}
+              onFirstTileLayout={onQuickActionTileLayout}
+              onDragMove={handleQuickActionDragMove}
+              onDragSessionStart={resetDashboardDragReorderOrigin}
+              onDragSessionEnd={resetDashboardDragReorderOrigin}
+              t={t}
+              gridStyles={dashboardTileGridStyles}
+              primaryColor={primaryColor}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+              borderColor={borderColor}
+              pageBackgroundColor={pageBackgroundColor}
+              variant="quick"
+            />
           </View>
 
           <View style={styles.amFinanceSection}>
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                marginBottom: amFinanceReorderMode ? 8 : 14,
+                marginBottom: dashboardReorderMode ? 8 : 14,
               }}
             >
               <ThemedText
@@ -1195,141 +1102,34 @@ export default function HomeScreen() {
                   {
                     color: textColor,
                     marginBottom: 0,
-                    flex: 1,
-                    minWidth: 0,
                   },
                 ]}
               >
                 {t("amFinance.sectionTitle")}
               </ThemedText>
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={
-                  amFinanceReorderMode
-                    ? t("dashboard.finishReorder")
-                    : t("dashboard.reorderCards")
-                }
-                activeOpacity={0.85}
-                onPress={() => {
-                  if (amFinanceReorderMode) setExclusiveReorderMode(null);
-                  else setExclusiveReorderMode("finance");
-                }}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  borderWidth: amFinanceReorderMode ? 2 : 0,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderColor: primaryColor,
-                  backgroundColor: amFinanceReorderMode
-                    ? hexToRgba(primaryColor, 0.16)
-                    : hexToRgba(primaryColor, 0.09),
-                }}
-              >
-                <Ionicons
-                  name={
-                    amFinanceReorderMode ? "checkmark-circle" : "swap-vertical"
-                  }
-                  size={22}
-                  color={primaryColor}
-                />
-              </TouchableOpacity>
             </View>
-            {amFinanceReorderMode ? (
-              <ThemedText
-                type="caption"
-                style={{
-                  color: textSecondaryColor,
-                  marginBottom: 12,
-                  lineHeight: 18,
-                }}
-              >
-                {t("dashboard.reorderCardsHint")}
-              </ThemedText>
-            ) : null}
-            <View
-              ref={amFinanceGridRef}
-              collapsable={false}
-              onLayout={remeasureAmFinanceGrid}
-              style={styles.quickActionsGrid}
-            >
-              {amFinanceCardOrder.map((cardId, index) => {
-                const item = dashboardAmFinanceCardDefs[cardId];
-                const tileInner = (
-                  <>
-                    <View
-                      style={[
-                        styles.quickTileIconWrap,
-                        {
-                          backgroundColor: "transparent",
-                          borderWidth: 1,
-                          borderColor: hexToRgba(borderColor, 0.55),
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name={item.icon}
-                        size={24}
-                        color={textSecondaryColor}
-                      />
-                    </View>
-                    <ThemedText
-                      type="caption"
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
-                      style={[
-                        styles.quickTileLabel,
-                        {
-                          color: textColor,
-                          paddingRight: amFinanceReorderMode ? 22 : 0,
-                        },
-                      ]}
-                    >
-                      {t(item.labelKey)}
-                    </ThemedText>
-                  </>
-                );
-
-                return (
-                  <SortableQuickTile
-                    key={cardId}
-                    reorderMode={amFinanceReorderMode}
-                    isDragging={amFinanceDraggingId === cardId}
-                    handleColor={textSecondaryColor}
-                    onDragStart={() => {
-                      amFinanceDragIndexRef.current = index;
-                      setAmFinanceDraggingId(cardId);
-                    }}
-                    onDragMove={handleAmFinanceDragMove}
-                    onDragEnd={() => {
-                      setAmFinanceDraggingId(null);
-                      amFinanceDragIndexRef.current = null;
-                    }}
-                    style={[
-                      styles.quickTile,
-                      {
-                        backgroundColor: hexToRgba(pageBackgroundColor, 0.52),
-                        borderColor,
-                        borderWidth: 1,
-                      },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={amFinanceReorderMode}
-                      onLayout={
-                        index === 0 ? onAmFinanceTileLayout : undefined
-                      }
-                      style={{ flex: 1 }}
-                      onPress={item.onPress}
-                    >
-                      {tileInner}
-                    </TouchableOpacity>
-                  </SortableQuickTile>
-                );
-              })}
-            </View>
+            <DashboardSortableTileGrid
+              order={amFinanceCardOrder}
+              defs={dashboardAmFinanceCardDefs}
+              reorderMode={dashboardReorderMode}
+              draggingId={amFinanceDraggingId}
+              onDraggingIdChange={setAmFinanceDraggingId}
+              dragIndexRef={amFinanceDragIndexRef}
+              gridRef={amFinanceGridRef}
+              onGridLayout={remeasureAmFinanceGrid}
+              onFirstTileLayout={onAmFinanceTileLayout}
+              onDragMove={handleAmFinanceDragMove}
+              onDragSessionStart={resetDashboardDragReorderOrigin}
+              onDragSessionEnd={resetDashboardDragReorderOrigin}
+              t={t}
+              gridStyles={dashboardTileGridStyles}
+              primaryColor={primaryColor}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+              borderColor={borderColor}
+              pageBackgroundColor={pageBackgroundColor}
+              variant="plain"
+            />
           </View>
 
           <View
@@ -1340,11 +1140,7 @@ export default function HomeScreen() {
           >
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                marginBottom: amTransportReorderMode ? 8 : 14,
+                marginBottom: dashboardReorderMode ? 8 : 14,
               }}
             >
               <ThemedText
@@ -1354,144 +1150,36 @@ export default function HomeScreen() {
                   {
                     color: textColor,
                     marginBottom: 0,
-                    flex: 1,
-                    minWidth: 0,
                   },
                 ]}
               >
                 {t("amTransport.sectionTitle")}
               </ThemedText>
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={
-                  amTransportReorderMode
-                    ? t("dashboard.finishReorder")
-                    : t("dashboard.reorderCards")
-                }
-                activeOpacity={0.85}
-                onPress={() => {
-                  if (amTransportReorderMode) setExclusiveReorderMode(null);
-                  else setExclusiveReorderMode("transport");
-                }}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  borderWidth: amTransportReorderMode ? 2 : 0,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderColor: primaryColor,
-                  backgroundColor: amTransportReorderMode
-                    ? hexToRgba(primaryColor, 0.16)
-                    : hexToRgba(primaryColor, 0.09),
-                }}
-              >
-                <Ionicons
-                  name={
-                    amTransportReorderMode ? "checkmark-circle" : "swap-vertical"
-                  }
-                  size={22}
-                  color={primaryColor}
-                />
-              </TouchableOpacity>
             </View>
-            {amTransportReorderMode ? (
-              <ThemedText
-                type="caption"
-                style={{
-                  color: textSecondaryColor,
-                  marginBottom: 12,
-                  lineHeight: 18,
-                }}
-              >
-                {t("dashboard.reorderCardsHint")}
-              </ThemedText>
-            ) : null}
-            <View
-              ref={amTransportGridRef}
-              collapsable={false}
-              onLayout={remeasureAmTransportGrid}
-              style={styles.quickActionsGrid}
-            >
-              {amTransportCardOrder.map((cardId, index) => {
-                const item = dashboardAmTransportCardDefs[cardId];
-                const tileInner = (
-                  <>
-                    <View
-                      style={[
-                        styles.quickTileIconWrap,
-                        {
-                          backgroundColor: "transparent",
-                          borderWidth: 1,
-                          borderColor: hexToRgba(borderColor, 0.55),
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name={item.icon}
-                        size={24}
-                        color={textSecondaryColor}
-                      />
-                    </View>
-                    <ThemedText
-                      type="caption"
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
-                      style={[
-                        styles.quickTileLabel,
-                        {
-                          color: textColor,
-                          paddingRight: amTransportReorderMode ? 22 : 0,
-                        },
-                      ]}
-                    >
-                      {t(item.labelKey)}
-                    </ThemedText>
-                  </>
-                );
-
-                return (
-                  <SortableQuickTile
-                    key={cardId}
-                    reorderMode={amTransportReorderMode}
-                    isDragging={amTransportDraggingId === cardId}
-                    handleColor={textSecondaryColor}
-                    onDragStart={() => {
-                      amTransportDragIndexRef.current = index;
-                      setAmTransportDraggingId(cardId);
-                    }}
-                    onDragMove={handleAmTransportDragMove}
-                    onDragEnd={() => {
-                      setAmTransportDraggingId(null);
-                      amTransportDragIndexRef.current = null;
-                    }}
-                    style={[
-                      styles.quickTile,
-                      {
-                        backgroundColor: hexToRgba(pageBackgroundColor, 0.52),
-                        borderColor,
-                        borderWidth: 1,
-                      },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={amTransportReorderMode}
-                      onLayout={
-                        index === 0 ? onAmTransportTileLayout : undefined
-                      }
-                      style={{ flex: 1 }}
-                      onPress={item.onPress}
-                    >
-                      {tileInner}
-                    </TouchableOpacity>
-                  </SortableQuickTile>
-                );
-              })}
-            </View>
+            <DashboardSortableTileGrid
+              order={amTransportCardOrder}
+              defs={dashboardAmTransportCardDefs}
+              reorderMode={dashboardReorderMode}
+              draggingId={amTransportDraggingId}
+              onDraggingIdChange={setAmTransportDraggingId}
+              dragIndexRef={amTransportDragIndexRef}
+              gridRef={amTransportGridRef}
+              onGridLayout={remeasureAmTransportGrid}
+              onFirstTileLayout={onAmTransportTileLayout}
+              onDragMove={handleAmTransportDragMove}
+              onDragSessionStart={resetDashboardDragReorderOrigin}
+              onDragSessionEnd={resetDashboardDragReorderOrigin}
+              t={t}
+              gridStyles={dashboardTileGridStyles}
+              primaryColor={primaryColor}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+              borderColor={borderColor}
+              pageBackgroundColor={pageBackgroundColor}
+              variant="plain"
+            />
           </View>
 
-          {/* Additional Content to Enable Scrolling */}
           <View style={styles.bottomSpacer} />
         </ScrollView>
 
@@ -1550,9 +1238,6 @@ export default function HomeScreen() {
             <MultiCurrencyConverter
               key="multiCurrencyConverter-main"
               currenciesData={currenciesData}
-              onFromCurrencyChange={(currency) =>
-                console.log("From currency changed to:", currency)
-              }
               onClose={() => setShowMultiCurrency(false)}
               inModal={true}
               showAllTargets={multiCurrencyShowAllTargets}
@@ -1747,7 +1432,6 @@ export default function HomeScreen() {
     );
   };
 
-  // Show onboarding for new users
   if (showOnboarding) {
     return (
       <SafeAreaView
@@ -1766,7 +1450,6 @@ export default function HomeScreen() {
     >
       {renderMainContent()}
 
-      {/* Auth Prompt Modal */}
       <AuthPromptModal
         visible={showAuthPrompt}
         onClose={() => setShowAuthPrompt(false)}
@@ -1872,7 +1555,6 @@ const styles = StyleSheet.create({
     height: 60,
   },
 
-  // State styles
   emptyState: {
     alignItems: "center",
     paddingVertical: 32,
@@ -1881,10 +1563,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 8,
-    textAlign: "center",
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
     textAlign: "center",
   },
   refreshButton: {
@@ -1900,191 +1578,5 @@ const styles = StyleSheet.create({
   refreshButtonText: {
     fontSize: 14,
     fontWeight: "600",
-  },
-
-  // Rate alerts styles
-  rateAlertsSection: {
-    marginBottom: 24,
-  },
-  rateAlertsCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.6)",
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  rateAlertsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  rateAlertsTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#18181b",
-  },
-  existingAlerts: {
-    marginBottom: 24,
-  },
-  alertsList: {
-    gap: 12,
-  },
-  alertItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: "rgba(248, 250, 252, 0.8)",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.6)",
-  },
-  alertArrow: {
-    marginHorizontal: 10,
-    fontSize: 14,
-    color: "#71717a",
-  },
-  alertText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#F07E25",
-  },
-  createAlertSection: {
-    marginTop: 20,
-  },
-  alertForm: {
-    gap: 16,
-  },
-  alertFormRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  alertInput: {
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.8)",
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 14,
-    backgroundColor: "rgba(248, 250, 252, 0.8)",
-    color: "#18181b",
-  },
-  conditionButton: {
-    backgroundColor: "#F07E25",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 80,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  conditionButtonText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  createAlertButton: {
-    backgroundColor: "#FFB366",
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  createAlertButtonText: {
-    color: "#1c1c1e",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  showMoreAlertsText: {
-    color: "#F07E25",
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 12,
-  },
-  sectionSubtitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#404040",
-    marginBottom: 16,
-  },
-  alertContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  alertDeleteButton: {
-    padding: 8,
-    backgroundColor: "rgba(63, 63, 70, 0.12)",
-    borderRadius: 6,
-    marginLeft: 12,
-  },
-  alertDeleteText: {
-    fontSize: 14,
-  },
-  deleteAllInlineButton: {
-    backgroundColor: "#E04D4D",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 16,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  deleteAllInlineText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  currencyPickerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    backgroundColor: "rgba(248, 250, 252, 0.8)",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.6)",
-    gap: 8,
-  },
-  currencyPickerButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#18181b",
-  },
-
-  // Settings button
-  settingsButton: {
-    backgroundColor: "rgba(107, 114, 128, 0.9)",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    shadowColor: "#6b7280",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  settingsButtonText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 10,
-    textAlign: "center",
   },
 });

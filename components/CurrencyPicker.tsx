@@ -180,8 +180,6 @@ export default function CurrencyPicker({
   const [search, setSearch] = useState("");
   const [frequentlyUsedCurrencies, setFrequentlyUsedCurrencies] = useState<{[key: string]: number}>({});
 
-  // Theme colors
-  const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
   const surfaceSecondaryColor = useThemeColor({}, 'surfaceSecondary');
   const primaryColor = useThemeColor({}, 'primary');

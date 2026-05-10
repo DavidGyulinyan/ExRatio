@@ -37,7 +37,6 @@ function SignUpScreen() {
    const { t } = useLanguage();
    const router = useRouter();
 
-   // Theme colors
    const backgroundColor = useThemeColor({}, 'background');
    const surfaceColor = useThemeColor({}, 'surface');
    const primaryColor = useThemeColor({}, 'primary');
@@ -187,7 +186,7 @@ function SignUpScreen() {
       fontSize: 14,
       fontWeight: '600',
     },
-  }), [backgroundColor, surfaceColor, primaryColor, accentColor, textColor, textSecondaryColor, borderColor]);
+  }), [backgroundColor, surfaceColor, primaryColor, textColor, textSecondaryColor, borderColor]);
 
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
@@ -212,10 +211,9 @@ function SignUpScreen() {
         Alert.alert(t('auth.signup'), error.message);
       } else {
 
-        // Navigate directly to main app - onboarding will be shown automatically for new users
         router.replace('/');
       }
-    } catch (error) {
+    } catch {
       Alert.alert(t('common.error'), t('error.loading'));
     } finally {
       setLoading(false);

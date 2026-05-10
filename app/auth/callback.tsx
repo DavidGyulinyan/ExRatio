@@ -19,8 +19,6 @@ export default function AuthCallbackScreen() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        console.log('🔵 Processing OAuth callback...');
-        
         const supabase = getSupabaseClient();
         if (!supabase) {
           throw new Error('Supabase client not available');
@@ -103,16 +101,12 @@ export default function AuthCallbackScreen() {
         }
 
         if (data.session) {
-          console.log('✅ OAuth callback successful, user authenticated');
           Alert.alert('Success', 'You have been signed in successfully!');
           router.replace({ pathname: '/' });
         } else {
-          console.log('⚠️ No session found after callback');
-          // Try to force refresh the session in case it's still processing
           setTimeout(async () => {
             const { data: sessionData } = await supabase.auth.getSession();
             if (sessionData.session) {
-              console.log('✅ Session found after delay');
               router.replace({ pathname: '/' });
             } else {
               setError('No authentication session found');
@@ -130,7 +124,7 @@ export default function AuthCallbackScreen() {
     };
 
     handleAuthCallback();
-  }, []);
+  }, [router]);
 
   const handleRetry = () => {
     setError(null);
@@ -138,8 +132,6 @@ export default function AuthCallbackScreen() {
     // Retry the callback processing
     const handleAuthCallback = async () => {
       try {
-        console.log('🔵 Retrying OAuth callback...');
-        
         const supabase = getSupabaseClient();
         if (!supabase) {
           throw new Error('Supabase client not available');
@@ -155,7 +147,6 @@ export default function AuthCallbackScreen() {
         }
 
         if (data.session) {
-          console.log('✅ Retry OAuth callback successful');
           router.replace({ pathname: '/' });
         }
       } catch (err) {

@@ -44,7 +44,7 @@ export default function AuthPromptModal({
       } else {
         onClose();
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred with Google sign in');
     } finally {
       setLoading(false);
@@ -61,7 +61,7 @@ export default function AuthPromptModal({
         } else {
           onClose();
         }
-      } catch (error) {
+      } catch {
         Alert.alert('Error', 'An unexpected error occurred with Apple sign in');
       } finally {
         setLoading(false);

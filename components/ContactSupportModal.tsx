@@ -33,8 +33,6 @@ export default function ContactSupportModal({
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  // Theme colors
-  const backgroundColor = useThemeColor({}, "background");
   const surfaceColor = useThemeColor({}, "surface");
   const surfaceSecondaryColor = useThemeColor({}, "surfaceSecondary");
   const primaryColor = useThemeColor({}, "primary");

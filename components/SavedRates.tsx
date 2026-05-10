@@ -58,8 +58,6 @@ export default function SavedRates({
   const { user } = useAuth();
   const { savedRates: hookSavedRates, deleteRate, deleteAllRates, loading } = useSavedRates();
 
-  // Theme colors
-  const surfaceColor = useThemeColor({}, 'surface');
   const surfaceSecondaryColor = useThemeColor({}, 'surfaceSecondary');
   const borderColor = useThemeColor({}, 'border');
   const primaryColor = useThemeColor({}, 'primary');

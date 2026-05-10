@@ -60,7 +60,6 @@ export default function SignInScreen() {
       loadPreferences();
     }, []);
 
-   // Theme colors
    const backgroundColor = useThemeColor({}, 'background');
    const surfaceColor = useThemeColor({}, 'surface');
    const surfaceSecondaryColor = useThemeColor({}, 'surfaceSecondary');
@@ -73,7 +72,6 @@ export default function SignInScreen() {
    const warningColor = useThemeColor({}, 'warning');
 
   const styles = useMemo(() => StyleSheet.create({
-    // Main containers
     container: {
       flex: 1,
       backgroundColor: backgroundColor,
@@ -341,7 +339,7 @@ export default function SignInScreen() {
       fontSize: 14,
       color: textColor,
     },
-  }), [backgroundColor, surfaceColor, surfaceSecondaryColor, primaryColor, accentColor, textColor, textSecondaryColor, borderColor, errorColor, warningColor]);
+  }), [backgroundColor, surfaceColor, surfaceSecondaryColor, primaryColor, textColor, textSecondaryColor, borderColor, errorColor, warningColor]);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -393,7 +391,7 @@ export default function SignInScreen() {
       } else {
         Alert.alert(t('common.ok'), t('signin.confirmationSent'));
       }
-    } catch (error) {
+    } catch {
       Alert.alert(t('common.error'), t('error.loading'));
     } finally {
       setResendLoading(false);

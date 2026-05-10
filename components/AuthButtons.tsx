@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +12,6 @@ interface AuthButtonsProps {
 export default function AuthButtons({ onSuccess }: AuthButtonsProps) {
   const { signInWithGoogle, signInWithApple } = useAuth();
   const { t } = useLanguage();
-  const router = useRouter();
 
   const handleGoogleSignIn = async () => {
     try {

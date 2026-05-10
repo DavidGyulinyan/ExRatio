@@ -14,7 +14,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { hexToRgba, FormField } from '@/constants/theme';
 import Logo from '@/components/Logo';
@@ -26,13 +25,10 @@ export default function ForgotPasswordScreen() {
   const [emailSent, setEmailSent] = useState(false);
 
   const { resetPassword } = useAuth();
-  const { t } = useLanguage();
   const router = useRouter();
 
-  // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
-  const surfaceSecondaryColor = useThemeColor({}, 'surfaceSecondary');
   const primaryColor = useThemeColor({}, 'primary');
   const accentColor = useThemeColor({}, 'accent');
   const textColor = useThemeColor({}, 'text');
@@ -199,7 +195,7 @@ export default function ForgotPasswordScreen() {
       fontWeight: '600',
       textAlign: 'center',
     },
-  }), [backgroundColor, surfaceColor, surfaceSecondaryColor, primaryColor, accentColor, textColor, textSecondaryColor, borderColor]);
+  }), [backgroundColor, surfaceColor, primaryColor, textColor, textSecondaryColor, borderColor]);
 
   const handleResetPassword = async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -224,7 +220,7 @@ export default function ForgotPasswordScreen() {
         setEmail(normalizedEmail);
         setEmailSent(true);
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);

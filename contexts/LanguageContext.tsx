@@ -489,9 +489,9 @@ const translations = {
     // Armenian    
     'dashboard.title': 'Վահանակ',
     'dashboard.quickActions': 'Արագ գործողություններ',
-    'dashboard.reorderCards': 'Դասակարգել քարտերը ըստ ցանկության',
+    'dashboard.reorderCards': 'Դասավորել քարտերը',
     'dashboard.reorderCardsHint':
-      'Քարշեք աջ անկյունի նշանը՝ քարտը տեղափոխելու համար։ Դասավորությունը պահպանվում է ավտոմատ։',
+      'Աջ մասի պատկերակից բռնեք և քաշեք քարտը։ Դասավորությունը պահվում է ավտոմատ։',
     'dashboard.finishReorder': 'Ավարտել',
     'dashboard.converter': 'Փոխարկիչ',
     'dashboard.multiCurrency': 'Բազմարժույթ',

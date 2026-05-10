@@ -30,7 +30,6 @@ export default function SettingsScreen() {
   const { deleteRate: deleteSavedRate, deleteAllRates: deleteAllSavedRates } = useSavedRates();
   const { deletePickedRate } = usePickedRates();
 
-  // State for modals and forms
   const [showThemeSelection, setShowThemeSelection] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -39,7 +38,6 @@ export default function SettingsScreen() {
   const [showPickedRatesManagement, setShowPickedRatesManagement] = useState(false);
   const [appLockToggling, setAppLockToggling] = useState(false);
 
-  // Notification settings state
   const [notificationSettings, setNotificationSettings] = useState({
     enabled: true,
     sound: true,
@@ -47,13 +45,11 @@ export default function SettingsScreen() {
     showPreview: true,
   });
 
-  // Exchange rate data state
   const [exchangeRateData, setExchangeRateData] = useState<{
     time_last_update_utc?: string;
     time_next_update_utc?: string;
   } | null>(null);
 
-  // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
   const surfaceSecondaryColor = useThemeColor({}, 'surfaceSecondary');
@@ -64,7 +60,6 @@ export default function SettingsScreen() {
   const textInverseColor = useThemeColor({}, 'textInverse');
   const borderColor = useThemeColor({}, 'border');
 
-  // Load notification settings and exchange rate data on mount
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -82,10 +77,9 @@ export default function SettingsScreen() {
             time_next_update_utc: data.time_next_update_utc,
           });
         } else {
-          // Provide estimated times when no cached data is available
           const now = new Date();
-          const lastUpdate = new Date(now.getTime() - (30 * 60 * 1000)); // 30 minutes ago
-          const nextUpdate = new Date(now.getTime() + (30 * 60 * 1000)); // 30 minutes from now
+          const lastUpdate = new Date(now.getTime() - 30 * 60 * 1000);
+          const nextUpdate = new Date(now.getTime() + 30 * 60 * 1000);
 
           setExchangeRateData({
             time_last_update_utc: lastUpdate.toISOString(),
@@ -94,10 +88,9 @@ export default function SettingsScreen() {
         }
       } catch (error) {
         console.error('Error loading settings:', error);
-        // Fallback to estimated times
         const now = new Date();
-        const lastUpdate = new Date(now.getTime() - (60 * 60 * 1000)); // 1 hour ago
-        const nextUpdate = new Date(now.getTime() + (60 * 60 * 1000)); // 1 hour from now
+        const lastUpdate = new Date(now.getTime() - 60 * 60 * 1000);
+        const nextUpdate = new Date(now.getTime() + 60 * 60 * 1000);
 
         setExchangeRateData({
           time_last_update_utc: lastUpdate.toISOString(),
@@ -109,18 +102,16 @@ export default function SettingsScreen() {
     loadSettings();
   }, []);
 
-  // Handle sign out
   const handleSignOut = async () => {
     try {
       await signOut();
       Alert.alert('Success', 'You have been signed out successfully.');
       router.replace('/');
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   };
 
-  // Handle notification setting toggle
   const handleNotificationToggle = async (setting: keyof typeof notificationSettings) => {
     const newSettings = {
       ...notificationSettings,
@@ -136,7 +127,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // Handle clear cache
   const handleClearCache = async () => {
     Alert.alert(
       'Clear Cache',
@@ -152,7 +142,7 @@ export default function SettingsScreen() {
               await storage.removeItem('lastApiCall');
               setExchangeRateData(null);
               Alert.alert('Success', 'Cache cleared successfully.');
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'Failed to clear cache.');
             }
           }
@@ -179,7 +169,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // Get terms of use content
   const getCurrentTerms = () => {
     const terms = {
       en: `Capital Terms of Use
@@ -754,7 +743,6 @@ Capital चुनने के लिए धन्यवाद!`
     },
   }), [backgroundColor, surfaceColor, surfaceSecondaryColor, primaryColor, textColor, textSecondaryColor, textInverseColor, borderColor]);
 
-  // Render theme selection modal
   const renderThemeSelection = () => {
     if (!showThemeSelection) return null;
 
@@ -802,7 +790,6 @@ Capital चुनने के लिए धन्यवाद!`
     );
   };
 
-  // Render notification settings modal
   const renderNotificationSettings = () => {
     if (!showNotificationSettings) return null;
 
@@ -864,7 +851,6 @@ Capital चुनने के लिए धन्यवाद!`
     );
   };
 
-  // Render picked rates management modal
   const renderPickedRatesManagement = () => {
     if (!showPickedRatesManagement) return null;
 
@@ -899,7 +885,6 @@ Capital चुनने के लिए धन्यवाद!`
             style: 'destructive',
             onPress: async () => {
               try {
-                // Delete all picked rates one by one
                 const deletePromises = pickedRates.pickedRates.map(rate => deletePickedRate(rate.id));
                 const results = await Promise.all(deletePromises);
                 const failedCount = results.filter(success => !success).length;
@@ -909,7 +894,7 @@ Capital चुनने के लिए धन्यवाद!`
                 } else {
                   Alert.alert('Success', 'All picked rates deleted successfully.');
                 }
-              } catch (error) {
+              } catch {
                 Alert.alert('Error', 'Failed to delete all picked rates.');
               }
             }
@@ -984,7 +969,6 @@ Capital चुनने के लिए धन्यवाद!`
     );
   };
 
-  // Render terms of use modal
   const renderTerms = () => {
     if (!showTerms) return null;
 
@@ -1012,7 +996,6 @@ Capital चुनने के लिए धन्यवाद!`
     );
   };
 
-  // Render saved rates management modal
   const renderSavedRatesManagement = () => {
     if (!showSavedRatesManagement) return null;
 

@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   createContext,
   useCallback,
   useContext,
@@ -30,7 +30,6 @@ import {
   calculateTurnoverTax,
   calculateVat,
   type SoleProprietorRegimeId,
-  type VatMode,
 } from "@/lib/armenia";
 import { shareLines } from "@/lib/shareText";
 import {
@@ -496,7 +495,6 @@ function SolePropView(props: {
     locale,
     primaryColor,
     surfaceColor,
-    surfaceSecondaryColor,
     textColor,
     textSecondaryColor,
     borderColor,
@@ -711,7 +709,6 @@ function TurnoverTaxView(props: {
     locale,
     primaryColor,
     surfaceColor,
-    surfaceSecondaryColor,
     textColor,
     textSecondaryColor,
     borderColor,
@@ -877,7 +874,6 @@ function ProfitTaxView(props: {
     locale,
     primaryColor,
     surfaceColor,
-    surfaceSecondaryColor,
     textColor,
     textSecondaryColor,
     borderColor,
@@ -1019,7 +1015,6 @@ function VatView(props: {
     locale,
     primaryColor,
     surfaceColor,
-    surfaceSecondaryColor,
     textColor,
     textSecondaryColor,
     borderColor,

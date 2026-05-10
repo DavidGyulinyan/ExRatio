@@ -19,7 +19,6 @@ export default function DashboardModal({
   children,
   style,
 }: DashboardModalProps) {
-  // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
   const textColor = useThemeColor({}, 'text');

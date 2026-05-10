@@ -2,17 +2,23 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useRef } from "react";
 import {
   PanResponder,
+  Platform,
   type StyleProp,
   View,
   type ViewStyle,
 } from "react-native";
-import Animated, { LinearTransition } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
-/** Spring layout when tiles reflow during dashboard reorder (Reanimated). */
-const TILE_LAYOUT_TRANSITION = LinearTransition.springify()
-  .damping(20)
-  .stiffness(220)
-  .mass(0.38);
+/** Short ease-out: reads as “picked up”, not bouncy. */
+const GRAB = { duration: 90, easing: Easing.out(Easing.cubic) };
+const RELEASE = { duration: 130, easing: Easing.out(Easing.quad) };
+
+const SCALE_LIFT = 0.026;
 
 type SortableQuickTileProps = {
   reorderMode: boolean;
@@ -23,6 +29,8 @@ type SortableQuickTileProps = {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   handleColor: string;
+  /** Match dashboard `quickTile.borderRadius` so lift/elevation follow rounded shape. */
+  borderRadius?: number;
 };
 
 /**
@@ -31,14 +39,33 @@ type SortableQuickTileProps = {
  */
 export default function SortableQuickTile({
   reorderMode,
-  isDragging,
+  isDragging: _isDragging,
   onDragStart,
   onDragMove,
   onDragEnd,
   children,
   style,
   handleColor,
+  borderRadius = 18,
 }: SortableQuickTileProps) {
+  const lift = useSharedValue(0);
+
+  /** Scale + z-index only (Android elevation on grab tended to hitch layout). */
+  const animatedCardStyle = useAnimatedStyle(() => {
+    const t = lift.value;
+    const scale = 1 + SCALE_LIFT * t;
+    const up = t > 0.01;
+    return {
+      transform: [{ scale }],
+      zIndex: up ? 40 : 0,
+    };
+  });
+
+  const cornerStyle: ViewStyle =
+    Platform.OS === "ios"
+      ? { borderRadius, borderCurve: "continuous" }
+      : { borderRadius };
+
   const callbacksRef = useRef({
     onDragStart,
     onDragMove,
@@ -54,6 +81,7 @@ export default function SortableQuickTile({
         onMoveShouldSetPanResponder: () => false,
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
+          lift.value = withTiming(1, GRAB);
           callbacksRef.current.onDragStart();
         },
         onPanResponderMove: (evt) => {
@@ -63,9 +91,11 @@ export default function SortableQuickTile({
           );
         },
         onPanResponderRelease: () => {
+          lift.value = withTiming(0, RELEASE);
           callbacksRef.current.onDragEnd();
         },
         onPanResponderTerminate: () => {
+          lift.value = withTiming(0, RELEASE);
           callbacksRef.current.onDragEnd();
         },
       }),
@@ -74,32 +104,21 @@ export default function SortableQuickTile({
 
   return (
     <Animated.View
-      layout={reorderMode ? TILE_LAYOUT_TRANSITION : undefined}
-      style={[
-        style,
-        { position: "relative" },
-        isDragging && {
-          opacity: 0.96,
-          transform: [{ scale: 1.02 }],
-          zIndex: 20,
-          elevation: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.12,
-          shadowRadius: 8,
-        },
-      ]}
+      pointerEvents="box-none"
+      style={[style, { position: "relative" }, cornerStyle, animatedCardStyle]}
     >
       {children}
       {reorderMode ? (
         <View
           collapsable={false}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{
             position: "absolute",
             right: 4,
             top: 4,
             padding: 8,
-            zIndex: 3,
+            zIndex: 50,
+            elevation: 0,
           }}
           {...panResponder.panHandlers}
         >
