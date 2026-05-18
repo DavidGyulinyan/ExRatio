@@ -24,8 +24,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
 import { SIGNUP_NO_VERIFICATION_EMAIL } from '@/lib/authErrors';
 import {
+  getPasswordPolicyFailureMessageKey,
   isPasswordPolicyValid,
-  PASSWORD_POLICY_MESSAGE_KEY,
+  MIN_PASSWORD_LENGTH,
 } from '@/lib/passwordPolicy';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -46,7 +47,7 @@ function SignUpScreen() {
    const [resendingOtp, setResendingOtp] = useState(false);
 
    const { signUp, confirmSignupWithOtp, resendConfirmationEmail } = useAuth();
-   const { t } = useLanguage();
+   const { t, tWithParams } = useLanguage();
    const router = useRouter();
    const { effectiveTheme } = useTheme();
 
@@ -57,6 +58,7 @@ function SignUpScreen() {
    const textColor = useThemeColor({}, 'text');
    const textSecondaryColor = useThemeColor({}, 'textSecondary');
    const borderColor = useThemeColor({}, 'border');
+   const errorColor = useThemeColor({}, 'error');
 
   const styles = useMemo(() => StyleSheet.create({
     safeArea: {
@@ -248,7 +250,15 @@ function SignUpScreen() {
     }
 
     if (!isPasswordPolicyValid(password)) {
-      Alert.alert(t('common.error'), t(PASSWORD_POLICY_MESSAGE_KEY));
+      const failureKey = getPasswordPolicyFailureMessageKey(password);
+      const failureMessage =
+        failureKey === 'signup.passwordTooShort'
+          ? tWithParams('signup.passwordTooShort', {
+              count: password.length,
+              min: MIN_PASSWORD_LENGTH,
+            })
+          : t(failureKey);
+      Alert.alert(t('common.error'), failureMessage);
       return;
     }
 
@@ -462,7 +472,36 @@ function SignUpScreen() {
                         />
                       </TouchableOpacity>
                     </View>
-                    <Text style={styles.passwordHint}>{t('signup.passwordHint')}</Text>
+                    <Text
+                      style={[
+                        styles.passwordHint,
+                        password.length > 0 &&
+                          password.length < MIN_PASSWORD_LENGTH && {
+                            color: errorColor,
+                            fontWeight: '600',
+                          },
+                      ]}
+                    >
+                      {password.length > 0 &&
+                      password.length < MIN_PASSWORD_LENGTH
+                        ? (() => {
+                            const msg = tWithParams(
+                              'signup.passwordLengthWarning',
+                              {
+                                count: password.length,
+                                min: MIN_PASSWORD_LENGTH,
+                              }
+                            );
+                            if (
+                              msg.includes('{count}') ||
+                              msg === 'signup.passwordLengthWarning'
+                            ) {
+                              return `${password.length} / ${MIN_PASSWORD_LENGTH} ${t('signup.passwordCharUnit')}`;
+                            }
+                            return msg;
+                          })()
+                        : t('signup.passwordHint')}
+                    </Text>
                   </View>
 
                   <View style={styles.fieldGroup}>

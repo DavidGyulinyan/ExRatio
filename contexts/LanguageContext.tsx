@@ -91,6 +91,8 @@ const translations = {
     'converter.professional': 'Professional currency converter with real-time rates and advanced features',
     'converter.conversionResult': '{amount} {fromCurrency} = {convertedAmount} {toCurrency}',
     'converter.exchangeRateResult': '{rateLabel}: 1 {fromCurrency} = {rate} {toCurrency}',
+    'converter.cbaRateNotice':
+      'Official Central Bank of Armenia (cba.am) rate for {currencies}.',
     'converter.backToDashboard': '← Back to Dashboard',
     'converter.amountLabel': 'Amount',
     'converter.enterAmountPlaceholder': 'Enter amount',
@@ -240,6 +242,9 @@ const translations = {
     'contactSupport.messageSent': 'Your message has been sent successfully!',
     'contactSupport.sendError': 'Failed to send message. Please try again.',
     'contactSupport.emptyMessage': 'Please enter a message',
+    'contactSupport.emailUnavailable': 'Email is not available on this device',
+    'contactSupport.emailPlaceholder': 'your.email@example.com',
+    'contactSupport.subject': 'Capital Support Request',
     'settings.dangerZone': 'Danger Zone',
     'settings.deleteAccount': 'Delete Account',
     'settings.deleteAccountTitle': 'Delete account?',
@@ -499,9 +504,16 @@ const translations = {
     'signup.codeMissing': 'Please enter the confirmation code.',
     'signup.fillAllFields': 'Please fill in all fields',
     'signup.passwordsDontMatch': 'Passwords do not match',
-    'signup.passwordTooShort': 'Password must be at least 8 characters',
+    'signup.passwordTooShort':
+      'Password must be at least {min} characters. You entered {count}.',
+    'signup.passwordLengthWarning': '{count} / {min} characters',
+    'signup.passwordCharUnit': 'characters',
+    'signup.passwordMissingUpper': 'Include at least one uppercase letter (A–Z).',
+    'signup.passwordMissingLower': 'Include at least one lowercase letter (a–z).',
+    'signup.passwordMissingNumber': 'Include at least one number (0–9).',
+    'signup.passwordMissingSpecial': 'Include at least one symbol (e.g. !@#$%).',
     'signup.passwordRequirements':
-      'Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a symbol (e.g. !@#$%).',
+      'Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol (e.g. !@#$%).',
     'signup.passwordHint':
       'At least 8 characters with uppercase, lowercase, a number, and a symbol.',
     'signup.alreadyHaveAccount': 'Already have an account?',
@@ -611,6 +623,8 @@ const translations = {
     'converter.professional': 'Արժույթի պրոֆեսիոնալ փոխանակում',
     'converter.conversionResult': '{amount} {fromCurrency} = {convertedAmount} {toCurrency}',
     'converter.exchangeRateResult': '{rateLabel}: 1 {fromCurrency} = {rate} {toCurrency}',
+    'converter.cbaRateNotice':
+      'Պաշտոնական ՀՀ Կենտրոնական բանկի (cba.am) դրույք՝ {currencies} համար։',
     'converter.backToDashboard': '← Վերադարձ դեպի վահանակ',
     
     // Settings & Common
@@ -639,13 +653,24 @@ const translations = {
     'settings.dataManagement': 'Տվյալների կառավարում',
     'settings.exchangeRateInfo': 'Տվյալներ փոխարժեքի մասին',
     'settings.aboutExchangeRates': 'Փոխարժեքի մասին',
-    'settings.exchangeRateInfoDescription': 'Փոխարժեքի մասին տվյալները թարմացվում են ժամը մեկ անգամ',
+    'settings.exchangeRateInfoDescription':
+      'Փոխարժեքները թարմացվում են ժամը մեկ անգամ։ CBA-ում հրապարակված արժույթների դեպքում AMD-ի դեպքում կիրառվում է cba.am պաշտոնական դրույքը։',
     'settings.clearCache': 'Մաքրել քեշը',
     'settings.clearAllData': 'Մաքրել բոլոր տվյալները',
     'settings.aboutSupport': 'Ծանոթություն և աջակցություն',
     'settings.about': 'Ծանոթություն',
     'settings.help': 'Օգնություն',
     'settings.contactSupport': 'Կապն ու աջակցություն',
+    'contactSupport.title': 'Կապ և աջակցություն',
+    'contactSupport.describeIssue': 'Նկարագրեք խնդիրը',
+    'contactSupport.yourEmail': 'Ձեր էլ. փոստը (ըստ ցանկության)',
+    'contactSupport.sendMessage': 'Ուղարկել հաղորդագրությունը',
+    'contactSupport.messageSent': 'Հաղորդագրությունը ուղարկվեց։',
+    'contactSupport.sendError': 'Չհաջողվեց ուղարկել։ Կրկին փորձեք։',
+    'contactSupport.emptyMessage': 'Մուտքագրեք հաղորդագրություն',
+    'contactSupport.emailUnavailable': 'Այս սարքում էլ. փոստի հավելվածը հասանելի չէ',
+    'contactSupport.emailPlaceholder': 'ձեր.email@օրինակ.com',
+    'contactSupport.subject': 'Capital աջակցության հարց',
     'settings.dangerZone': 'Վտանգավոր գոտի',
     'settings.deleteAccount': 'Հեռացնել հաշիվը',
     'settings.deleteAccountTitle': 'Ջնջե՞լ հաշիվը',
@@ -1023,7 +1048,14 @@ const translations = {
     'signup.codeMissing': 'Խնդրում ենք մուտքագրել հաստատման կոդը:',
     'signup.fillAllFields': 'Խնդրում ենք լրացնել բոլոր դաշտերը',
     'signup.passwordsDontMatch': 'Գաղտնաբառերը չեն համապատասխանում',
-    'signup.passwordTooShort': 'Գաղտնաբառը պետք է լինի առնվազն 8 նիշ',
+    'signup.passwordTooShort':
+      'Գաղտնաբառը պետք է լինի առնվազն {min} նիշ։ Դուք մուտքագրել եք {count}։',
+    'signup.passwordLengthWarning': '{count} / {min} նիշ',
+    'signup.passwordCharUnit': 'նիշ',
+    'signup.passwordMissingUpper': 'Ավելացրեք գոնե մեկ մեծատառ (A–Z)։',
+    'signup.passwordMissingLower': 'Ավելացրեք գոնե մեկ փոքրատառ (a–z)։',
+    'signup.passwordMissingNumber': 'Ավելացրեք գոնե մեկ թիվ (0–9)։',
+    'signup.passwordMissingSpecial': 'Ավելացրեք գոնե մեկ նշան (օր. !@#$%)։',
     'signup.passwordRequirements':
       'Գաղտնաբառը պետք է լինի առնվազն 8 նիշ և պարունակի մեծատառ, փոքրատառ, թիվ և նշան (օր. !@#$%)։',
     'signup.passwordHint':
@@ -2848,18 +2880,25 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
 
   const t = (key: string): string => {
     const hy = (translations.hy as Record<string, string | undefined>)[key];
-    return hy != null && hy !== '' ? hy : key;
+    if (hy != null && hy !== '') return hy;
+    const en = (translations.en as Record<string, string | undefined>)[key];
+    if (en != null && en !== '') return en;
+    return key;
   };
 
   const tWithParams = (key: string, params: { [key: string]: string | number }): string => {
     let translation = t(key);
-    
-    // Replace placeholders like {amount}, {fromCurrency}, etc.
-    Object.keys(params).forEach(paramKey => {
+    if (translation === key) return translation;
+
+    Object.keys(params).forEach((paramKey) => {
       const placeholder = `{${paramKey}}`;
-      translation = translation.replace(new RegExp(placeholder, 'g'), String(params[paramKey]));
+      const escaped = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      translation = translation.replace(
+        new RegExp(escaped, 'g'),
+        String(params[paramKey])
+      );
     });
-    
+
     return translation;
   };
 

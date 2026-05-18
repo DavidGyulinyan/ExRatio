@@ -22,5 +22,20 @@ export function isPasswordPolicyValid(password: string): boolean {
   return getPasswordPolicyFailures(password).length === 0;
 }
 
-/** i18n key shown when password does not meet policy. */
+/** Fallback i18n key when password does not meet policy. */
 export const PASSWORD_POLICY_MESSAGE_KEY = "signup.passwordRequirements";
+
+const FAILURE_MESSAGE_KEYS: Record<PasswordPolicyFailure, string> = {
+  too_short: "signup.passwordTooShort",
+  missing_upper: "signup.passwordMissingUpper",
+  missing_lower: "signup.passwordMissingLower",
+  missing_number: "signup.passwordMissingNumber",
+  missing_special: "signup.passwordMissingSpecial",
+};
+
+/** Most specific i18n key for the first failed rule (better than a generic wall of text). */
+export function getPasswordPolicyFailureMessageKey(password: string): string {
+  const failures = getPasswordPolicyFailures(password);
+  if (failures.length === 0) return PASSWORD_POLICY_MESSAGE_KEY;
+  return FAILURE_MESSAGE_KEYS[failures[0]];
+}

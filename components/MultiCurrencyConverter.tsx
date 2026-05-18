@@ -26,6 +26,7 @@ import {
   formatGroupedNumber,
   parseCanonicalDecimalAmount,
 } from "@/lib/numberFormat";
+import { resolveRatesForPair } from "@/lib/exchangeRateResolve";
 
 const STORAGE_KEY = "multiCurrencyConverterState";
 const STORAGE_TS_KEY = "multiCurrencyConverterState.ts";
@@ -132,18 +133,17 @@ export default function MultiCurrencyConverter({
       return;
     }
 
-    const baseRate = currenciesData.conversion_rates?.[fromCurrency];
-    if (!baseRate) {
-      setConversions({});
-      return;
-    }
     const conversionResults: { [key: string]: number } = {};
 
     conversionTargets.forEach((target) => {
-      if (currenciesData.conversion_rates?.[target.currency]) {
-        const targetRate = currenciesData.conversion_rates[target.currency];
-        const convertedAmount = (inputAmount / baseRate) * targetRate;
-        conversionResults[target.currency] = convertedAmount;
+      const resolved = resolveRatesForPair(
+        fromCurrency,
+        target.currency,
+        currenciesData
+      );
+      if (resolved) {
+        conversionResults[target.currency] =
+          (inputAmount / resolved.fromRate) * resolved.toRate;
       }
     });
 

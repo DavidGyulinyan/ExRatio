@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   TextInput,
@@ -36,9 +36,15 @@ import {
   type RecentConversion,
 } from "@/lib/converterRecentHistory";
 import {
+  ensureCbaRatesOnPayload,
   fetchLiveExchangeRates,
   type CachedExchangeRates,
 } from "@/lib/liveExchangeRates";
+import {
+  crossRateForPair,
+  getCbaAttributionForPair,
+  resolveRatesForPair,
+} from "@/lib/exchangeRateResolve";
 import {
   canonicalDecimalToDisplay,
   displayDecimalToCanonical,
@@ -98,6 +104,18 @@ export default function CurrencyConverter({
   const accentColor = useThemeColor({}, "accent");
   const inputAmountValue = parseCanonicalDecimalAmount(amount);
 
+  const cbaAttribution = useMemo(() => {
+    if (!currenciesData || !fromCurrency || !toCurrency) return { kind: "none" as const };
+    return getCbaAttributionForPair(fromCurrency, toCurrency, currenciesData);
+  }, [currenciesData, fromCurrency, toCurrency]);
+
+  const cbaNoticeText = useMemo(() => {
+    if (cbaAttribution.kind === "none") return null;
+    return tWithParams("converter.cbaRateNotice", {
+      currencies: cbaAttribution.cbaCurrencies.join(", "),
+    });
+  }, [cbaAttribution, tWithParams]);
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -124,7 +142,8 @@ export default function CurrencyConverter({
           cacheTimestamp &&
           now - parseInt(cacheTimestamp) < CACHE_DURATION
         ) {
-          const transformedData: Data = JSON.parse(cachedData);
+          let transformedData: Data = JSON.parse(cachedData);
+          transformedData = await ensureCbaRatesOnPayload(transformedData);
           setCurrenciesData(transformedData);
           setCurrencyList(
             fiatKeysFromConversionRates(transformedData.conversion_rates)
@@ -258,9 +277,12 @@ export default function CurrencyConverter({
         for (const rate of alertsWithActiveSettings) {
           if (!currenciesData) continue;
 
-          const currentRate =
-            currenciesData.conversion_rates[rate.toCurrency] /
-            currenciesData.conversion_rates[rate.fromCurrency];
+          const currentRate = crossRateForPair(
+            rate.fromCurrency,
+            rate.toCurrency,
+            currenciesData
+          );
+          if (currentRate == null) continue;
 
           const targetRate = rate.alertSettings!.targetRate;
           const direction = rate.alertSettings!.direction;
@@ -314,9 +336,8 @@ export default function CurrencyConverter({
   const handleSaveRate = async (): Promise<void> => {
     if (!fromCurrency || !toCurrency || !currenciesData) return;
 
-    const fromRate = currenciesData.conversion_rates[fromCurrency];
-    const toRate = currenciesData.conversion_rates[toCurrency];
-    const rate = toRate / fromRate;
+    const rate = crossRateForPair(fromCurrency, toCurrency, currenciesData);
+    if (rate == null) return;
 
     const success = await saveRate(fromCurrency, toCurrency, rate);
     if (success) {
@@ -443,14 +464,13 @@ export default function CurrencyConverter({
       return 0;
     }
 
-    const fromRate = currenciesData.conversion_rates[fromCurrency];
-    const toRate = currenciesData.conversion_rates[toCurrency];
-
-    if (!fromRate || !toRate || isNaN(fromRate) || isNaN(toRate)) {
-      return 0;
-    }
-
-    return toRate / fromRate;
+    const resolved = resolveRatesForPair(
+      fromCurrency,
+      toCurrency,
+      currenciesData
+    );
+    if (!resolved) return 0;
+    return resolved.toRate / resolved.fromRate;
   }, [currenciesData, fromCurrency, toCurrency]);
 
   useEffect(() => {
@@ -501,25 +521,20 @@ export default function CurrencyConverter({
       return;
     }
 
-    const fromRate = currenciesData.conversion_rates[fromCurrency];
-    const toRate = currenciesData.conversion_rates[toCurrency];
-
-    if (
-      !fromRate ||
-      !toRate ||
-      isNaN(fromRate) ||
-      isNaN(toRate) ||
-      fromRate === 0
-    ) {
+    const resolved = resolveRatesForPair(
+      fromCurrency,
+      toCurrency,
+      currenciesData
+    );
+    if (!resolved) {
       setConvertedAmount("");
       console.log("❌ Invalid exchange rates:", {
-        fromRate,
-        toRate,
         fromCurrency,
         toCurrency,
       });
       return;
     }
+    const { fromRate, toRate } = resolved;
 
     const inputAmount = parseCanonicalDecimalAmount(amount);
     if (inputAmount == null || inputAmount <= 0) {
@@ -574,8 +589,7 @@ export default function CurrencyConverter({
       currenciesData &&
       fromCurrency &&
       toCurrency &&
-      currenciesData.conversion_rates[fromCurrency] &&
-      currenciesData.conversion_rates[toCurrency]
+      resolveRatesForPair(fromCurrency, toCurrency, currenciesData)
     ) {
       handleConvert();
     } else {
@@ -931,6 +945,31 @@ export default function CurrencyConverter({
                     </ThemedText>
                   </View>
                 </View>
+                {cbaNoticeText ? (
+                  <View
+                    style={[
+                      styles.cbaNoticeRow,
+                      {
+                        backgroundColor: hexToRgba(primaryColor, 0.06),
+                        borderColor: hexToRgba(primaryColor, 0.18),
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={16}
+                      color={primaryColor}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.cbaNoticeText,
+                        { color: textSecondaryColor },
+                      ]}
+                    >
+                      {cbaNoticeText}
+                    </ThemedText>
+                  </View>
+                ) : null}
               </View>
             ) : (
               <View style={styles.placeholderResult}>
@@ -1067,10 +1106,8 @@ export default function CurrencyConverter({
 
           // Track picked rate when currency is selected
           if (currenciesData && toCurrency) {
-            const rate =
-              currenciesData.conversion_rates[toCurrency] /
-              currenciesData.conversion_rates[currency];
-            await trackRate(currency, toCurrency, rate, "viewed");
+            const rate = crossRateForPair(currency, toCurrency, currenciesData);
+            if (rate != null) await trackRate(currency, toCurrency, rate, "viewed");
           }
         }}
       />
@@ -1086,10 +1123,8 @@ export default function CurrencyConverter({
 
           // Track picked rate when currency is selected
           if (currenciesData && fromCurrency) {
-            const rate =
-              currenciesData.conversion_rates[currency] /
-              currenciesData.conversion_rates[fromCurrency];
-            await trackRate(fromCurrency, currency, rate, "viewed");
+            const rate = crossRateForPair(fromCurrency, currency, currenciesData);
+            if (rate != null) await trackRate(fromCurrency, currency, rate, "viewed");
           }
         }}
       />
@@ -1472,6 +1507,22 @@ const styles = StyleSheet.create({
   ratePillText: {
     flex: 1,
     fontSize: 12,
+    fontWeight: "500",
+  },
+  cbaNoticeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  cbaNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 16,
     fontWeight: "500",
   },
   placeholderResult: {

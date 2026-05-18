@@ -49,23 +49,22 @@ export default function ContactSupportModal({
 
     setLoading(true);
     try {
-      const isAvailable = await MailComposer.composeAsync({
+      const isAvailable = await MailComposer.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert(t("common.error"), t("contactSupport.emailUnavailable"));
+        return;
+      }
+
+      await MailComposer.composeAsync({
         recipients: ["ardifysolutions@gmail.com"],
-        subject: "Capital Support Request",
+        subject: t("contactSupport.subject"),
         body: `From: ${user?.email || userEmail || "Anonymous User"}\n\n${message}`,
       });
 
-      if (isAvailable) {
-        Alert.alert(t("common.save"), t("contactSupport.messageSent"));
-        setMessage("");
-        setUserEmail("");
-        onClose();
-      } else {
-        Alert.alert(
-          t("common.error"),
-          "Email composer is not available on this device"
-        );
-      }
+      Alert.alert(t("common.save"), t("contactSupport.messageSent"));
+      setMessage("");
+      setUserEmail("");
+      onClose();
     } catch (error) {
       console.error("Email composer error:", error);
       Alert.alert(t("common.error"), t("contactSupport.sendError"));
@@ -168,7 +167,7 @@ export default function ContactSupportModal({
               onPress={onClose}
               disabled={loading}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={t("common.close")}
             >
               <Ionicons name="arrow-back" size={22} color={textSecondaryColor} />
             </TouchableOpacity>
@@ -187,7 +186,7 @@ export default function ContactSupportModal({
                 style={[styles.input, { height: 50, marginBottom: 16 }]}
                 value={userEmail}
                 onChangeText={setUserEmail}
-                placeholder="your.email@example.com"
+                placeholder={t("contactSupport.emailPlaceholder")}
                 placeholderTextColor={textSecondaryColor}
                 keyboardType="email-address"
                 autoCapitalize="none"

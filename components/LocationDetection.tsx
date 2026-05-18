@@ -342,7 +342,7 @@ function currencyFromCaucasusTimezone(): string | null {
   }
 }
 
-async function currencyFromNetworkIp(): Promise<string | null> {
+async function countryCodeFromNetworkIp(): Promise<string | null> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -353,13 +353,22 @@ async function currencyFromNetworkIp(): Promise<string | null> {
     clearTimeout(timeoutId);
     if (!response.ok) return null;
     const data = (await response.json()) as { countryCode?: string };
-    const code = normalizeCountryCode(data.countryCode);
-    if (!code || !countryToCurrency[code]) return null;
-    return countryToCurrency[code];
+    return normalizeCountryCode(data.countryCode);
   } catch {
     return null;
   }
 }
+
+async function currencyFromNetworkIp(): Promise<string | null> {
+  const code = await countryCodeFromNetworkIp();
+  if (!code || !countryToCurrency[code]) return null;
+  return countryToCurrency[code];
+}
+
+export {
+  detectUserCountryCode,
+  isUserInArmenia,
+} from '@/lib/userRegion';
 
 /**
  * Best-effort local fiat: IP country (same approach as CurrencyConverter),

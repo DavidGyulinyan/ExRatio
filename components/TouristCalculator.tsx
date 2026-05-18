@@ -9,6 +9,8 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { fiatKeysFromConversionRates } from "@/constants/fiatCurrencyCodes";
+import { crossRateForPair } from "@/lib/exchangeRateResolve";
+import type { CachedExchangeRates } from "@/lib/liveExchangeRates";
 import { getAsyncStorage } from "@/lib/storage";
 import {
   canonicalDecimalToDisplay,
@@ -199,15 +201,16 @@ export default function TouristCalculator({
     };
   }, [currenciesData]);
 
-  const rates = useMemo(() => {
-    return (
-      currenciesData?.conversion_rates ??
-      cachedRates?.conversion_rates ??
-      // some places may store only the rates object
-      cachedRates ??
-      null
-    );
+  const rateData = useMemo((): Pick<
+    CachedExchangeRates,
+    "conversion_rates" | "cba_conversion_rates"
+  > | null => {
+    const raw = currenciesData ?? cachedRates;
+    if (!raw?.conversion_rates) return null;
+    return raw as Pick<CachedExchangeRates, "conversion_rates" | "cba_conversion_rates">;
   }, [cachedRates, currenciesData]);
+
+  const rates = rateData?.conversion_rates ?? null;
 
   const currencies = useMemo(() => {
     if (!rates) return ["USD", "EUR", "RUB", "GEL", "AMD"];
@@ -216,12 +219,9 @@ export default function TouristCalculator({
   }, [rates]);
 
   const autoRateToAmd = useMemo(() => {
-    if (!rates) return null;
-    const amd = Number(rates["AMD"]);
-    const from = Number(rates[fromCurrency]);
-    if (!Number.isFinite(amd) || !Number.isFinite(from) || from <= 0) return null;
-    return amd / from;
-  }, [rates, fromCurrency]);
+    if (!rateData) return null;
+    return crossRateForPair(fromCurrency, "AMD", rateData);
+  }, [rateData, fromCurrency]);
 
   const hasAutoRate = autoRateToAmd !== null && Number.isFinite(autoRateToAmd) && (autoRateToAmd as number) > 0;
   const rateDisplay = useMemo(() => {
