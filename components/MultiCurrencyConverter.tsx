@@ -24,6 +24,7 @@ import {
   canonicalDecimalToDisplay,
   displayDecimalToCanonical,
   formatGroupedNumber,
+  parseCanonicalDecimalAmount,
 } from "@/lib/numberFormat";
 
 const STORAGE_KEY = "multiCurrencyConverterState";
@@ -120,12 +121,13 @@ export default function MultiCurrencyConverter({
 
   // Calculate conversions
   const calculateConversions = useCallback(() => {
-    if (
-      !currenciesData ||
-      !amount ||
-      parseFloat(amount) <= 0 ||
-      !fromCurrency
-    ) {
+    if (!currenciesData || !amount || !fromCurrency) {
+      setConversions({});
+      return;
+    }
+
+    const inputAmount = parseCanonicalDecimalAmount(amount);
+    if (inputAmount == null || inputAmount <= 0) {
       setConversions({});
       return;
     }
@@ -135,8 +137,6 @@ export default function MultiCurrencyConverter({
       setConversions({});
       return;
     }
-
-    const inputAmount = parseFloat(amount);
     const conversionResults: { [key: string]: number } = {};
 
     conversionTargets.forEach((target) => {
@@ -166,9 +166,11 @@ export default function MultiCurrencyConverter({
           rate: currenciesData?.conversion_rates?.[target.currency] || 0,
         }));
 
+        const savedAmount = parseCanonicalDecimalAmount(amount);
+        if (savedAmount == null) return;
         await saveConversion(
           fromCurrency,
-          parseFloat(amount),
+          savedAmount,
           targetCurrencies,
           conversions
         );
@@ -200,8 +202,8 @@ export default function MultiCurrencyConverter({
       onShareableMessageChange(null);
       return;
     }
-    const amt = parseFloat(amount);
-    if (!Number.isFinite(amt) || amt <= 0) {
+    const amt = parseCanonicalDecimalAmount(amount);
+    if (amt == null || amt <= 0) {
       onShareableMessageChange(null);
       return;
     }
