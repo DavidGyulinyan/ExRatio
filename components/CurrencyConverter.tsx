@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Constants from "expo-constants";
 import { ThemedView } from "./themed-view";
 import { ThemedText } from "./themed-text";
 import CurrencyPicker from "./CurrencyPicker";
@@ -32,9 +31,14 @@ import {
   isFiatCurrencyCode,
 } from "@/constants/fiatCurrencyCodes";
 import {
+  fetchLiveExchangeRates,
+  type CachedExchangeRates,
+} from "@/lib/liveExchangeRates";
+import {
   canonicalDecimalToDisplay,
   displayDecimalToCanonical,
   formatGroupedNumber,
+  parseCanonicalDecimalAmount,
 } from "@/lib/numberFormat";
 
 interface CurrencyConverterProps {
@@ -44,19 +48,7 @@ interface CurrencyConverterProps {
   onShareableMessageChange?: (message: string | null) => void;
 }
 
-interface Data {
-  result: string;
-  documentation: string;
-  terms_of_use: string;
-  time_last_update_unix: number;
-  time_last_update_utc: string;
-  time_next_update_unix: number;
-  time_next_update_utc: string;
-  base_code: string;
-  conversion_rates: {
-    [key: string]: number;
-  };
-}
+type Data = CachedExchangeRates;
 
 export default function CurrencyConverter({
   onNavigateToDashboard,
@@ -96,6 +88,7 @@ export default function CurrencyConverter({
   const borderColor = useThemeColor({}, "border");
   const textInverseColor = useThemeColor({}, "textInverse");
   const accentColor = useThemeColor({}, "accent");
+  const inputAmountValue = parseCanonicalDecimalAmount(amount);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -138,47 +131,7 @@ export default function CurrencyConverter({
         }
 
         console.log("🌐 Fetching fresh exchange rates...");
-        const apiUrl =
-          Constants.expoConfig?.extra?.apiUrl ||
-          process.env.EXPO_PUBLIC_API_URL;
-        const apiKey =
-          Constants.expoConfig?.extra?.apiKey ||
-          process.env.EXPO_PUBLIC_API_KEY;
-
-        console.log("API Configuration:", {
-          hasApiUrl: !!apiUrl,
-          hasApiKey: !!apiKey,
-          apiUrl,
-          useConstants: !!Constants.expoConfig?.extra,
-        });
-
-        const response = await fetch(`${apiUrl}?apikey=${apiKey}`);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const apiData = await response.json();
-
-        if (!apiData.rates || !apiData.base) {
-          throw new Error("Invalid API response structure");
-        }
-
-        const transformedData: Data = {
-          result: "success",
-          documentation: "https://www.currencyfreaks.com/documentation",
-          terms_of_use: "https://www.currencyfreaks.com/terms",
-          time_last_update_unix: Math.floor(Date.now() / 1000),
-          time_last_update_utc: new Date().toUTCString(),
-          time_next_update_unix: Math.floor(Date.now() / 1000) + 3600,
-          time_next_update_utc: new Date(Date.now() + 3600000).toUTCString(),
-          base_code: apiData.base || "USD",
-          conversion_rates: apiData.rates || { USD: 1 },
-        };
-
-        if (!transformedData.conversion_rates["USD"]) {
-          transformedData.conversion_rates["USD"] = 1;
-        }
+        const transformedData = await fetchLiveExchangeRates();
 
         await AsyncStorage.setItem(
           "cachedExchangeRates",
@@ -477,38 +430,7 @@ export default function CurrencyConverter({
   const refreshExchangeRates = async (): Promise<void> => {
     try {
       console.log("🔄 Refreshing exchange rates...");
-      const apiUrl =
-        Constants.expoConfig?.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL;
-      const apiKey =
-        Constants.expoConfig?.extra?.apiKey || process.env.EXPO_PUBLIC_API_KEY;
-
-      const response = await fetch(`${apiUrl}?apikey=${apiKey}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const apiData = await response.json();
-
-      if (!apiData.rates || !apiData.base) {
-        throw new Error("Invalid API response structure");
-      }
-
-      const transformedData: Data = {
-        result: "success",
-        documentation: "https://www.currencyfreaks.com/documentation",
-        terms_of_use: "https://www.currencyfreaks.com/terms",
-        time_last_update_unix: Math.floor(Date.now() / 1000),
-        time_last_update_utc: new Date().toUTCString(),
-        time_next_update_unix: Math.floor(Date.now() / 1000) + 3600,
-        time_next_update_utc: new Date(Date.now() + 3600000).toUTCString(),
-        base_code: apiData.base || "USD",
-        conversion_rates: apiData.rates || { USD: 1 },
-      };
-
-      if (!transformedData.conversion_rates["USD"]) {
-        transformedData.conversion_rates["USD"] = 1;
-      }
+      const transformedData = await fetchLiveExchangeRates();
 
       await AsyncStorage.setItem(
         "cachedExchangeRates",
@@ -570,8 +492,8 @@ export default function CurrencyConverter({
       onShareableMessageChange(null);
       return;
     }
-    const inputAmount = parseFloat(amount);
-    if (!Number.isFinite(inputAmount) || inputAmount <= 0) {
+    const inputAmount = parseCanonicalDecimalAmount(amount);
+    if (inputAmount == null || inputAmount <= 0) {
       onShareableMessageChange(null);
       return;
     }
@@ -632,8 +554,8 @@ export default function CurrencyConverter({
       return;
     }
 
-    const inputAmount = parseFloat(amount);
-    if (isNaN(inputAmount) || inputAmount <= 0) {
+    const inputAmount = parseCanonicalDecimalAmount(amount);
+    if (inputAmount == null || inputAmount <= 0) {
       setConvertedAmount("");
       console.log("❌ Invalid input amount:", amount);
       return;
@@ -943,7 +865,7 @@ export default function CurrencyConverter({
               },
             ]}
           >
-            {amount && parseFloat(amount) > 0 && convertedAmount ? (
+            {inputAmountValue != null && inputAmountValue > 0 && convertedAmount ? (
               <View style={styles.conversionDisplay}>
                 <View
                   style={[
@@ -958,7 +880,7 @@ export default function CurrencyConverter({
                       { color: textSecondaryColor },
                     ]}
                   >
-                    {formatGroupedNumber(parseFloat(amount), 6)} {fromCurrency} →{" "}
+                    {formatGroupedNumber(inputAmountValue, 6)} {fromCurrency} →{" "}
                     {toCurrency}
                   </ThemedText>
                   <ThemedText

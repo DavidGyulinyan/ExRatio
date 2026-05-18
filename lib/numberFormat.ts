@@ -137,6 +137,17 @@ export function parseGroupedNumericInput(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Parse canonical amount string stored by converters (`12.5`, optional trailing `.`). */
+export function parseCanonicalDecimalAmount(canonical: string): number | null {
+  if (!canonical || canonical === "-") return null;
+  const normalized = canonical.endsWith(".")
+    ? canonical.slice(0, -1)
+    : canonical;
+  if (!normalized || normalized === "-") return null;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Math calculator main line: internal uses `.` decimal; show grouped with `,` decimal. */
 export function formatCalculatorMainDisplay(internal: string): string {
   if (internal === "" || internal === "-") return internal === "-" ? "-" : "0";

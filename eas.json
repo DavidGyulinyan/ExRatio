@@ -5,13 +5,19 @@
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       },
-      "channel": "main"
+      "channel": "main",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://v6.exchangerate-api.com/v6/"
+      }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
       },
-      "channel": "main"
+      "channel": "main",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://v6.exchangerate-api.com/v6/"
+      }
     }
   }
 }
