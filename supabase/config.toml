@@ -175,7 +175,8 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# Required for signup OTP flow in the app (see auth.email.template.confirmation).
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -194,6 +195,12 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# Signup confirmation: must include {{ .Token }} in the body for in-app OTP.
+# Hosted projects: paste this file into Dashboard → Authentication → Email Templates → Confirm signup.
+[auth.email.template.confirmation]
+subject = "Confirm your signup"
+content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

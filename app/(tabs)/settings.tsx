@@ -11,6 +11,10 @@ import { useAppLock } from '@/contexts/AppLockContext';
 import { getAsyncStorage } from '@/lib/storage';
 import { Layout, hexToRgba } from '@/constants/theme';
 import ContactSupportModal from '@/components/ContactSupportModal';
+import DangerZoneModal from '@/components/DangerZoneModal';
+import DeleteAccountPasswordModal from '@/components/DeleteAccountPasswordModal';
+import { getAccountDeletionAuthKind } from '@/lib/accountDeletionAuth';
+import type { AuthError } from '@supabase/supabase-js';
 import {
   useUserData,
   useSavedRates,
@@ -19,8 +23,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import CurrencyFlag from '@/components/CurrencyFlag';
 import { formatDateTimeDDMMYY } from "@/lib/dateFormat";
+import {
+  getPrivacyPolicyText,
+  type PrivacyPolicyLanguage,
+} from "@/lib/legal/privacyPolicy";
 export default function SettingsScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
   const { t, language } = useLanguage();
   const router = useRouter();
   const { themePreference, setThemePreference } = useTheme();
@@ -33,10 +41,14 @@ export default function SettingsScreen() {
   const [showThemeSelection, setShowThemeSelection] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [showContactSupport, setShowContactSupport] = useState(false);
   const [showSavedRatesManagement, setShowSavedRatesManagement] = useState(false);
   const [showPickedRatesManagement, setShowPickedRatesManagement] = useState(false);
   const [appLockToggling, setAppLockToggling] = useState(false);
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
+  const [showDangerZoneModal, setShowDangerZoneModal] = useState(false);
+  const [showDeletePasswordModal, setShowDeletePasswordModal] = useState(false);
 
   const [notificationSettings, setNotificationSettings] = useState({
     enabled: true,
@@ -110,6 +122,98 @@ export default function SettingsScreen() {
     } catch {
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
+  };
+
+  const resolveDeleteAccountErrorMessage = (error: AuthError) => {
+    const m = error.message?.trim() ?? '';
+    if (m === 'WRONG_OAUTH_ACCOUNT' || error.name === 'WrongOAuthAccount') {
+      return t('settings.deleteAccountWrongOAuthAccount');
+    }
+    if (m === 'DELETE_AUTH_UNSUPPORTED' || error.name === 'UnsupportedAuth') {
+      return t('settings.deleteAccountUnsupportedAuth');
+    }
+    return m || t('settings.deleteAccountFailed');
+  };
+
+  const runOAuthAccountDeletion = async () => {
+    if (deleteAccountBusy) return;
+    setDeleteAccountBusy(true);
+    try {
+      const { error } = await deleteAccount();
+      if (error) {
+        Alert.alert(t('common.error'), resolveDeleteAccountErrorMessage(error));
+        return;
+      }
+      router.replace('/');
+      Alert.alert(
+        t('settings.deleteAccountSuccessTitle'),
+        t('settings.deleteAccountSuccessMessage')
+      );
+    } catch {
+      Alert.alert(t('common.error'), t('settings.deleteAccountFailed'));
+    } finally {
+      setDeleteAccountBusy(false);
+    }
+  };
+
+  const handleDeleteAccountPasswordSubmit = async (password: string) => {
+    setDeleteAccountBusy(true);
+    try {
+      const { error } = await deleteAccount({ password });
+      if (error) {
+        const m = (error.message ?? '').toLowerCase();
+        const invalid =
+          m.includes('invalid') ||
+          m.includes('invalid login') ||
+          m.includes('invalid_credentials') ||
+          error.name === 'InvalidCredentialsError';
+        if (invalid) {
+          return { errorMessage: t('settings.deleteAccountPasswordWrong') };
+        }
+        return { errorMessage: resolveDeleteAccountErrorMessage(error) };
+      }
+      setShowDeletePasswordModal(false);
+      router.replace('/');
+      Alert.alert(
+        t('settings.deleteAccountSuccessTitle'),
+        t('settings.deleteAccountSuccessMessage')
+      );
+      return {};
+    } finally {
+      setDeleteAccountBusy(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (!user) return;
+    const kind = getAccountDeletionAuthKind(user);
+    const message =
+      kind === 'google'
+        ? t('settings.deleteAccountFinalGoogle')
+        : kind === 'apple'
+          ? t('settings.deleteAccountFinalApple')
+          : t('settings.deleteAccountMessage');
+
+    Alert.alert(t('settings.deleteAccountTitle'), message, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.deleteAccountConfirm'),
+        style: 'destructive',
+        onPress: () => {
+          if (!user) return;
+          const k = getAccountDeletionAuthKind(user);
+          if (!k) {
+            Alert.alert(t('common.error'), t('settings.deleteAccountUnsupportedAuth'));
+            return;
+          }
+          if (k === 'password') {
+            setShowDeletePasswordModal(true);
+            return;
+          }
+          void runOAuthAccountDeletion();
+        },
+      },
+    ]);
   };
 
   const handleNotificationToggle = async (setting: keyof typeof notificationSettings) => {
@@ -547,6 +651,9 @@ Capital चुनने के लिए धन्यवाद!`
     const doc = terms[language as keyof typeof terms];
     return doc ?? terms.hy;
   };
+
+  const getCurrentPrivacy = () =>
+    getPrivacyPolicyText(language as PrivacyPolicyLanguage);
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -996,6 +1103,35 @@ Capital चुनने के लिए धन्यवाद!`
     );
   };
 
+  const renderPrivacy = () => {
+    if (!showPrivacy) return null;
+
+    return (
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowPrivacy(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={22} color={textSecondaryColor} />
+          </TouchableOpacity>
+          <ThemedText style={[styles.modalTitle, { flex: 1, textAlign: 'center' }]}>
+            {t('settings.privacyPolicy')}
+          </ThemedText>
+          <View style={{ width: 32 }} />
+        </View>
+
+        <ScrollView style={{ maxHeight: 520 }} showsVerticalScrollIndicator>
+          <ThemedText style={{ fontSize: 14, lineHeight: 22, color: textColor }}>
+            {getCurrentPrivacy()}
+          </ThemedText>
+        </ScrollView>
+      </View>
+    );
+  };
+
   const renderSavedRatesManagement = () => {
     if (!showSavedRatesManagement) return null;
 
@@ -1317,6 +1453,23 @@ Capital चुनने के लिए धन्यवाद!`
                 </ThemedText>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.settingItem,
+                { marginTop: 12, borderWidth: 1, borderColor: hexToRgba(errorColor, 0.35) },
+              ]}
+              onPress={() => setShowDangerZoneModal(true)}
+              activeOpacity={0.75}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                <Ionicons name="warning-outline" size={22} color={errorColor} />
+                <ThemedText style={[styles.settingItemText, { color: errorColor }]}>
+                  {t('settings.dangerZone')}
+                </ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={textSecondaryColor} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1370,6 +1523,18 @@ Capital चुनने के लिए धन्यवाद!`
 
             <TouchableOpacity
               style={styles.settingItem}
+              onPress={() => setShowPrivacy(true)}
+              activeOpacity={0.75}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                <Ionicons name="shield-checkmark-outline" size={22} color={primaryColor} />
+                <ThemedText style={styles.settingItemText}>{t('settings.privacyPolicy')}</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={textSecondaryColor} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingItem}
               onPress={() => setShowContactSupport(true)}
               activeOpacity={0.75}
             >
@@ -1400,11 +1565,28 @@ Capital चुनने के लिए धन्यवाद!`
       {renderThemeSelection()}
       {renderNotificationSettings()}
       {renderTerms()}
+      {renderPrivacy()}
       {renderSavedRatesManagement()}
       {renderPickedRatesManagement()}
       <ContactSupportModal
         visible={showContactSupport}
         onClose={() => setShowContactSupport(false)}
+      />
+      <DangerZoneModal
+        visible={showDangerZoneModal}
+        onClose={() => setShowDangerZoneModal(false)}
+        onContactSupport={() => setShowContactSupport(true)}
+        onRequestDeleteAccount={handleDeleteAccount}
+        deleteBusy={deleteAccountBusy}
+      />
+      <DeleteAccountPasswordModal
+        visible={showDeletePasswordModal}
+        email={user?.email}
+        onClose={() => {
+          if (!deleteAccountBusy) setShowDeletePasswordModal(false);
+        }}
+        onSubmit={handleDeleteAccountPasswordSubmit}
+        busy={deleteAccountBusy}
       />
     </SafeAreaView>
   );

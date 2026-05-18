@@ -17,14 +17,29 @@ export function getSupabaseOAuthRedirectUrl(): string {
   return Linking.createURL(CALLBACK_SEGMENT);
 }
 
+/**
+ * Redirect URL embedded in signup / confirmation emails (magic link).
+ * Must appear in Supabase Dashboard → Authentication → URL configuration → Redirect URLs.
+ *
+ * If Expo Go keeps changing `exp://…` (LAN vs tunnel), set a stable allow-listed URL via
+ * `EXPO_PUBLIC_AUTH_EMAIL_REDIRECT` (e.g. `https://your-site.com/auth/callback` or your app scheme URL).
+ */
+export function getEmailAuthRedirectUrl(): string {
+  const fromEnv = process.env.EXPO_PUBLIC_AUTH_EMAIL_REDIRECT;
+  if (fromEnv && String(fromEnv).trim().length > 0) {
+    return String(fromEnv).trim();
+  }
+  return getSupabaseOAuthRedirectUrl();
+}
+
 /** One clear dev log so LAN vs tunnel mismatches are obvious. */
 export function logDevExpoOAuthRedirectHint(redirectTo: string): void {
   if (!__DEV__) return;
   console.log(
-    "[OAuth] Redirect URL (add EXACTLY to Supabase → Auth → Redirect URLs):\n" +
+    "[Auth redirect] Add EXACTLY to Supabase → Authentication → URL configuration → Redirect URLs:\n" +
       `  ${redirectTo}\n` +
-      "  LAN (`expo start`) and tunnel (`expo start --tunnel`) use different exp:// URLs.\n" +
-      "  Add both to the allow list if you switch modes, or Google sign-in will fail in the other."
+      "  Used for OAuth, password reset links, and signup confirmation links.\n" +
+      "  LAN (`expo start`) and tunnel (`expo start --tunnel`) use different exp:// URLs — add both, or set EXPO_PUBLIC_AUTH_EMAIL_REDIRECT to a stable HTTPS URL."
   );
 }
 

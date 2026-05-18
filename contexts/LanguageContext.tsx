@@ -211,6 +211,7 @@ const translations = {
     'settings.confirmNewPassword': 'Confirm New Password',
     'settings.passwordUpdateDescription': 'Update your password to keep your account secure',
     'settings.termsOfUse': 'Terms of Use',
+    'settings.privacyPolicy': 'Privacy Policy',
     'settings.preferences': 'Preferences',
     'settings.theme': 'Theme',
     'settings.system': 'System',
@@ -240,6 +241,40 @@ const translations = {
     'contactSupport.emptyMessage': 'Please enter a message',
     'settings.dangerZone': 'Danger Zone',
     'settings.deleteAccount': 'Delete Account',
+    'settings.deleteAccountTitle': 'Delete account?',
+    'settings.deleteAccountMessage':
+      'Final confirmation: your account and all associated data will be permanently removed.',
+    'settings.deleteAccountConfirm': 'Delete permanently',
+    'settings.deleteAccountSuccessTitle': 'Account deleted',
+    'settings.deleteAccountSuccessMessage': 'Your account and data on this device have been removed.',
+    'settings.deleteAccountFailed':
+      'Could not delete your account. If this persists, sign out and try again or contact support.',
+    'settings.dangerZoneModalIntro':
+      'Deleting your account permanently removes all personal data we hold for you on our servers and on this device.',
+    'settings.dangerZoneModalBulletServer':
+      'Cloud: saved rates, alerts, converter and calculator history, and related records.',
+    'settings.dangerZoneModalBulletDevice':
+      'This device: preferences, drafts, cache, dashboard layout, and other local data.',
+    'settings.dangerZoneModalBulletIrreversible':
+      'This cannot be undone. You can sign up again with the same email as a new, empty account.',
+    'settings.dangerZoneModalBulletSupport':
+      'Unsure? Contact support before you continue.',
+    'settings.dangerZoneModalClose': 'Close',
+    'settings.dangerZoneModalContactSupport': 'Contact support',
+    'settings.deleteAccountFinalGoogle':
+      'Final step: you will sign in with Google again to prove it is you, then your account will be removed.',
+    'settings.deleteAccountFinalApple':
+      'Final step: you will sign in with Apple again to prove it is you, then your account will be removed.',
+    'settings.deleteAccountPasswordTitle': 'Confirm password',
+    'settings.deleteAccountPasswordSubtitle':
+      'Enter your account password to permanently delete this account.',
+    'settings.deleteAccountPasswordPlaceholder': 'Password',
+    'settings.deleteAccountPasswordEmpty': 'Please enter your password.',
+    'settings.deleteAccountPasswordWrong': 'Incorrect password. Try again.',
+    'settings.deleteAccountWrongOAuthAccount':
+      'You signed in with a different account. Use the same Google or Apple account as in this app.',
+    'settings.deleteAccountUnsupportedAuth':
+      'This sign-in method cannot confirm account deletion in the app. Please contact support.',
     'settings.enableNotifications': 'Enable Notifications',
     'settings.sound': 'Sound',
     'settings.vibration': 'Vibration',
@@ -450,7 +485,8 @@ const translations = {
     'signup.accountCreated': 'Account Created!',
     'signup.checkEmail': 'Please check your email and click the confirmation link to activate your account. You won\'t be able to sign in until you confirm your email.',
     'signup.verifyTitle': 'Check your email',
-    'signup.verifySubtitle': 'Enter the confirmation code from your email, then tap Confirm.',
+    'signup.verifySubtitle':
+      'Enter the 6-digit code from your email, or open the confirmation link on this device, then tap Confirm.',
     'signup.codeLabel': 'Confirmation code',
     'signup.codePlaceholder': 'Code from email',
     'signup.verifyEmailButton': 'Confirm',
@@ -464,6 +500,10 @@ const translations = {
     'signup.passwordsDontMatch': 'Passwords do not match',
     'signup.passwordTooShort': 'Password must be at least 6 characters',
     'signup.alreadyHaveAccount': 'Already have an account?',
+    'signup.noVerificationEmail':
+      'No confirmation email was sent. This address may already be registered — try Sign in. If your account is new, check Spam/Promotions and wait a few minutes (email sending is limited). In Supabase Dashboard: Authentication → Providers → Email → enable Confirm email.',
+    'signup.verifySpamHint':
+      'Also check Spam or Promotions. Delivery can take a few minutes.',
     'signup.signIn': 'Sign In',
     'signup.selectLanguage': 'Select Language',
     
@@ -580,6 +620,7 @@ const translations = {
     'settings.confirmNewPassword': 'Հաստատել նոր գաղտնաբառը',
     'settings.passwordUpdateDescription': 'Թարմացրեք գաղտնաբառը՝ ձեր հաշիվը պաշտպանելու համար',
     'settings.termsOfUse': 'Օգտագործման պայմաններ',
+    'settings.privacyPolicy': 'Գաղտնիության քաղաքականություն',
     'settings.preferences': 'Նախընտրություններ',
     'settings.theme': 'Թեմա',
     'settings.system': 'Համակարգային',
@@ -602,6 +643,40 @@ const translations = {
     'settings.contactSupport': 'Կապն ու աջակցություն',
     'settings.dangerZone': 'Վտանգավոր գոտի',
     'settings.deleteAccount': 'Հեռացնել հաշիվը',
+    'settings.deleteAccountTitle': 'Ջնջե՞լ հաշիվը',
+    'settings.deleteAccountMessage':
+      'Վերջին հաստատում․ հաշիվը և դրան կապված բոլոր տվյալները կջնջվեն ընդմիշտ։',
+    'settings.deleteAccountConfirm': 'Ջնջել ընդմիշտ',
+    'settings.deleteAccountSuccessTitle': 'Հաշիվը ջնջվեց',
+    'settings.deleteAccountSuccessMessage': 'Ձեր հաշիվը և այս սարքի տվյալները հեռացվել են։',
+    'settings.deleteAccountFailed':
+      'Հնարավոր չեղավ ջնջել հաշիվը։ Փորձեք դուրս գալ և կրկին, կամ կապվեք աջակցության հետ։',
+    'settings.dangerZoneModalIntro':
+      'Հաշիվը հեռացնելիս դուք ընդմիշտ կկորցնեք մեր սերվերներում ու այս սարքում պահված ձեր անձնական տվյալները։',
+    'settings.dangerZoneModalBulletServer':
+      'Սերվերում՝ պահպանված փոխարժեքներ, ազդանշաններ, բազմարժույթային ու հաշվիչի պատմություն։',
+    'settings.dangerZoneModalBulletDevice':
+      'Սարքում՝ կարգավորումներ, սևագրեր, քեշ, վահանակի դասավորություն։',
+    'settings.dangerZoneModalBulletIrreversible':
+      'Գործողությունը հետ չի բերվում։ Նույն էլ. հասցեով նոր գրանցումը կլինի թարմ, դատարկ հաշիվ։',
+    'settings.dangerZoneModalBulletSupport':
+      'Երկմտսքնություն ունե՞ք՝ նախ դիմեք աջակցությանը։',
+    'settings.dangerZoneModalClose': 'Փակել',
+    'settings.dangerZoneModalContactSupport': 'Կապ աջակցության հետ',
+    'settings.deleteAccountFinalGoogle':
+      'Վերջին քայլ․ հաստատման համար կբացվի Google մուտքը․ նույն հաշվով մուտք գործելուց հետո հաշիվը կջնջվի։',
+    'settings.deleteAccountFinalApple':
+      'Վերջին քայլ․ հաստատման համար կբացվի Apple մուտքը․ նույն հաշվով մուտք գործելուց հետո հաշիվը կջնջվի։',
+    'settings.deleteAccountPasswordTitle': 'Հաստատել գաղտնաբառը',
+    'settings.deleteAccountPasswordSubtitle':
+      'Մուտքագրեք ձեր հաշվի գաղտնաբառը՝ հաշիվը ընդմիշտ հեռացնելու համար։',
+    'settings.deleteAccountPasswordPlaceholder': 'Գաղտնաբառ',
+    'settings.deleteAccountPasswordEmpty': 'Մուտքագրեք գաղտնաբառը։',
+    'settings.deleteAccountPasswordWrong': 'Գաղտնաբառը սխալ է։ Կրկին փորձեք։',
+    'settings.deleteAccountWrongOAuthAccount':
+      'Մուտք եք գործել այլ հաշվով։ Օգտագործեք նույն Google կամ Apple հաշիվը, ինչ այս հավելվածում։',
+    'settings.deleteAccountUnsupportedAuth':
+      'Այս մուտքի եղանակով հաշվի հեռացումը հավելվածում հնարավոր չէ։ Դիմեք աջակցությանը։',
     'settings.enableNotifications': 'Միացնել ծանուցումները',
     'settings.sound': 'Ձայն',
     'settings.vibration': 'Վիբրացիա',
@@ -929,7 +1004,8 @@ const translations = {
     'signup.accountCreated': 'Հաշիվը ստեղծվեց:',
     'signup.checkEmail': 'Խնդրում ենք ստուգել ձեր էլ-փոստը և սեղմել հաստատման հղումը՝ ձեր հաշիվը ակտիվացնելու համար: Դուք չեք կարող մուտք գործել մինչև էլ-փոստը հաստատելը:',
     'signup.verifyTitle': 'Ստուգեք էլ-փոստը',
-    'signup.verifySubtitle': 'Մուտքագրեք հաստատման կոդը նամակից, ապա սեղմեք «Հաստատել»:',
+    'signup.verifySubtitle':
+      'Մուտքագրեք նամակի 6 նիշ կոդը, կամ այս սարքում բացեք հաստատման հղումը, ապա սեղմեք «Հաստատել»:',
     'signup.codeLabel': 'Հաստատման կոդ',
     'signup.codePlaceholder': 'Կոդը նամակից',
     'signup.verifyEmailButton': 'Հաստատել',
@@ -943,6 +1019,10 @@ const translations = {
     'signup.passwordsDontMatch': 'Գաղտնաբառերը չեն համապատասխանում',
     'signup.passwordTooShort': 'Գաղտնաբառը պետք է լինի առնվազն 6 նիշ',
     'signup.alreadyHaveAccount': 'Արդեն ունե՞ք հաշիվ',
+    'signup.noVerificationEmail':
+      'Հաստատման նամակ չի ուղարկվել: Այս էլ. հասցեն հնարավոր է արդեն գրանցված լինի՝ փորձեք «Մուտք գործել»: Եթե հաշիվը նոր է, ստուգեք Spam/Գովազդային թղթապանակը և սպասեք մի քանի րոպե (նամակների ուղարկումը սահմանափակ է): Supabase Dashboard → Authentication → Providers → Email → միացրեք Confirm email:',
+    'signup.verifySpamHint':
+      'Ստուգեք նաև Spam կամ Գովազդային: Նամակը կարող է ուշանալ մի քանի րոպե:',
     'signup.signIn': 'Մուտք գործել',
     'signup.selectLanguage': 'Ընտրել լեզու',
     ...AM_FINANCE_HY,
@@ -1016,6 +1096,7 @@ const translations = {
     'settings.confirmNewPassword': 'Подтвердить новый пароль',
     'settings.passwordUpdateDescription': 'Обновите свой пароль, чтобы обеспечить безопасность аккаунта',
     'settings.termsOfUse': 'Условия использования',
+    'settings.privacyPolicy': 'Политика конфиденциальности',
     'settings.preferences': 'Предпочтения',
     'settings.theme': 'Тема',
     'settings.system': 'Системная',
@@ -1038,6 +1119,40 @@ const translations = {
     'settings.contactSupport': 'Связь с поддержкой',
     'settings.dangerZone': 'Опасная зона',
     'settings.deleteAccount': 'Удалить аккаунт',
+    'settings.deleteAccountTitle': 'Удалить аккаунт?',
+    'settings.deleteAccountMessage':
+      'Последнее подтверждение: аккаунт и все связанные данные будут удалены навсегда.',
+    'settings.deleteAccountConfirm': 'Удалить навсегда',
+    'settings.deleteAccountSuccessTitle': 'Аккаунт удалён',
+    'settings.deleteAccountSuccessMessage': 'Аккаунт и данные на этом устройстве удалены.',
+    'settings.deleteAccountFailed':
+      'Не удалось удалить аккаунт. Выйдите и попробуйте снова или обратитесь в поддержку.',
+    'settings.dangerZoneModalIntro':
+      'Удаление аккаунта навсегда стирает все ваши персональные данные на серверах и на этом устройстве.',
+    'settings.dangerZoneModalBulletServer':
+      'В облаке: сохранённые курсы, оповещения, история конвертера и калькулятора.',
+    'settings.dangerZoneModalBulletDevice':
+      'На устройстве: настройки, черновики, кэш, порядок виджетов и прочие локальные данные.',
+    'settings.dangerZoneModalBulletIrreversible':
+      'Отменить нельзя. Тот же email можно использовать снова — это будет новый пустой аккаунт.',
+    'settings.dangerZoneModalBulletSupport':
+      'Сомневаетесь? Сначала напишите в поддержку.',
+    'settings.dangerZoneModalClose': 'Закрыть',
+    'settings.dangerZoneModalContactSupport': 'Связаться с поддержкой',
+    'settings.deleteAccountFinalGoogle':
+      'Последний шаг: войдите снова через Google, чтобы подтвердить личность, затем аккаунт будет удалён.',
+    'settings.deleteAccountFinalApple':
+      'Последний шаг: войдите снова через Apple, чтобы подтвердить личность, затем аккаунт будет удалён.',
+    'settings.deleteAccountPasswordTitle': 'Подтвердите пароль',
+    'settings.deleteAccountPasswordSubtitle':
+      'Введите пароль учётной записи для окончательного удаления.',
+    'settings.deleteAccountPasswordPlaceholder': 'Пароль',
+    'settings.deleteAccountPasswordEmpty': 'Введите пароль.',
+    'settings.deleteAccountPasswordWrong': 'Неверный пароль. Попробуйте снова.',
+    'settings.deleteAccountWrongOAuthAccount':
+      'Вы вошли другим аккаунтом. Используйте тот же Google или Apple, что и в приложении.',
+    'settings.deleteAccountUnsupportedAuth':
+      'Этот способ входа не позволяет удалить аккаунт в приложении. Обратитесь в поддержку.',
     'settings.enableNotifications': 'Включить уведомления',
     'settings.sound': 'Звук',
     'settings.vibration': 'Вибрация',
@@ -1281,7 +1396,8 @@ const translations = {
     'signup.accountCreated': 'Аккаунт создан!',
     'signup.checkEmail': 'Пожалуйста, проверьте ваш email и нажмите ссылку подтверждения для активации аккаунта. Вы не сможете войти, пока не подтвердите email.',
     'signup.verifyTitle': 'Проверьте почту',
-    'signup.verifySubtitle': 'Введите код подтверждения из письма и нажмите Подтвердить.',
+    'signup.verifySubtitle':
+      'Введите 6-значный код из письма или откройте ссылку подтверждения на этом устройстве, затем нажмите Подтвердить.',
     'signup.codeLabel': 'Код подтверждения',
     'signup.codePlaceholder': 'Код из письма',
     'signup.verifyEmailButton': 'Подтвердить',
@@ -1295,6 +1411,10 @@ const translations = {
     'signup.passwordsDontMatch': 'Пароли не совпадают',
     'signup.passwordTooShort': 'Пароль должен содержать минимум 6 символов',
     'signup.alreadyHaveAccount': 'Уже есть аккаунт?',
+    'signup.noVerificationEmail':
+      'Письмо с подтверждением не отправлено. Возможно, этот email уже зарегистрирован — попробуйте войти. Если аккаунт новый, проверьте Спам и подождите несколько минут (лимит писем). В Supabase: Authentication → Providers → Email → включите подтверждение email.',
+    'signup.verifySpamHint':
+      'Проверьте папку «Спам» или «Промоакции». Письмо может прийти с задержкой.',
     'signup.signIn': 'Войти',
     'signup.selectLanguage': 'Выбрать язык',
 
@@ -1419,6 +1539,7 @@ const translations = {
     'settings.confirmNewPassword': 'Confirmar Nueva Contraseña',
     'settings.passwordUpdateDescription': 'Actualiza tu contraseña para mantener tu cuenta segura',
     'settings.termsOfUse': 'Términos de Uso',
+    'settings.privacyPolicy': 'Política de privacidad',
     'settings.preferences': 'Preferencias',
     'settings.theme': 'Tema',
     'settings.system': 'Sistema',
@@ -1441,6 +1562,40 @@ const translations = {
     'settings.contactSupport': 'Contactar Soporte',
     'settings.dangerZone': 'Zona Peligrosa',
     'settings.deleteAccount': 'Eliminar Cuenta',
+    'settings.deleteAccountTitle': '¿Eliminar cuenta?',
+    'settings.deleteAccountMessage':
+      'Confirmación final: la cuenta y todos los datos asociados se eliminarán para siempre.',
+    'settings.deleteAccountConfirm': 'Eliminar para siempre',
+    'settings.deleteAccountSuccessTitle': 'Cuenta eliminada',
+    'settings.deleteAccountSuccessMessage': 'Tu cuenta y los datos en este dispositivo se han eliminado.',
+    'settings.deleteAccountFailed':
+      'No se pudo eliminar la cuenta. Cierra sesión e inténtalo de nuevo o contacta con soporte.',
+    'settings.dangerZoneModalIntro':
+      'Al eliminar la cuenta se borran para siempre tus datos personales en nuestros servidores y en este dispositivo.',
+    'settings.dangerZoneModalBulletServer':
+      'En la nube: tasas guardadas, alertas, historial del convertidor y de la calculadora.',
+    'settings.dangerZoneModalBulletDevice':
+      'En el dispositivo: preferencias, borradores, caché, orden del panel y datos locales.',
+    'settings.dangerZoneModalBulletIrreversible':
+      'No se puede deshacer. Puedes registrarte otra vez con el mismo correo; será una cuenta nueva y vacía.',
+    'settings.dangerZoneModalBulletSupport':
+      '¿Dudas? Contacta con soporte antes de continuar.',
+    'settings.dangerZoneModalClose': 'Cerrar',
+    'settings.dangerZoneModalContactSupport': 'Contactar soporte',
+    'settings.deleteAccountFinalGoogle':
+      'Último paso: volverás a iniciar sesión con Google para confirmar tu identidad; luego se eliminará la cuenta.',
+    'settings.deleteAccountFinalApple':
+      'Último paso: volverás a iniciar sesión con Apple para confirmar tu identidad; luego se eliminará la cuenta.',
+    'settings.deleteAccountPasswordTitle': 'Confirmar contraseña',
+    'settings.deleteAccountPasswordSubtitle':
+      'Introduce la contraseña de la cuenta para eliminarla permanentemente.',
+    'settings.deleteAccountPasswordPlaceholder': 'Contraseña',
+    'settings.deleteAccountPasswordEmpty': 'Introduce tu contraseña.',
+    'settings.deleteAccountPasswordWrong': 'Contraseña incorrecta. Inténtalo de nuevo.',
+    'settings.deleteAccountWrongOAuthAccount':
+      'Has iniciado sesión con otra cuenta. Usa el mismo Google o Apple que en esta app.',
+    'settings.deleteAccountUnsupportedAuth':
+      'Este método de acceso no permite eliminar la cuenta en la app. Contacta con soporte.',
     'settings.enableNotifications': 'Habilitar Notificaciones',
     'settings.sound': 'Sonido',
     'settings.vibration': 'Vibración',
@@ -1668,7 +1823,8 @@ const translations = {
     'signup.accountCreated': '¡Cuenta creada!',
     'signup.checkEmail': 'Por favor revisa tu email y haz clic en el enlace de confirmación para activar tu cuenta. No podrás iniciar sesión hasta que confirmes tu email.',
     'signup.verifyTitle': 'Revisa tu correo',
-    'signup.verifySubtitle': 'Introduce el código de confirmación del correo y pulsa Confirmar.',
+    'signup.verifySubtitle':
+      'Introduce el código de 6 dígitos del correo o abre el enlace de confirmación en este dispositivo y pulsa Confirmar.',
     'signup.codeLabel': 'Código de confirmación',
     'signup.codePlaceholder': 'Código del correo',
     'signup.verifyEmailButton': 'Confirmar',
@@ -1682,6 +1838,10 @@ const translations = {
     'signup.passwordsDontMatch': 'Las contraseñas no coinciden',
     'signup.passwordTooShort': 'La contraseña debe tener al menos 6 caracteres',
     'signup.alreadyHaveAccount': '¿Ya tienes una cuenta?',
+    'signup.noVerificationEmail':
+      'No se envió el correo de confirmación. Es posible que este email ya esté registrado — prueba iniciar sesión. Si la cuenta es nueva, revisa Spam/Promociones y espera unos minutos (hay límites de envío). En Supabase: Authentication → Providers → Email → activa Confirmar email.',
+    'signup.verifySpamHint':
+      'Revisa también Spam o Promociones. El correo puede tardar unos minutos.',
     'signup.signIn': 'Iniciar Sesión',
     'signup.selectLanguage': 'Seleccionar idioma',
 
@@ -1821,6 +1981,7 @@ const translations = {
     'settings.confirmNewPassword': '确认新密码',
     'settings.passwordUpdateDescription': '更新您的密码以保护账户安全',
     'settings.termsOfUse': '使用条款',
+    'settings.privacyPolicy': '隐私政策',
     'settings.preferences': '偏好设置',
     'settings.theme': '主题',
     'settings.system': '系统',
@@ -1842,6 +2003,37 @@ const translations = {
     'settings.contactSupport': '联系支持',
     'settings.dangerZone': '危险区域',
     'settings.deleteAccount': '删除账户',
+    'settings.deleteAccountTitle': '删除账户？',
+    'settings.deleteAccountMessage':
+      '最后确认：账户及所有相关数据将被永久删除。',
+    'settings.deleteAccountConfirm': '永久删除',
+    'settings.deleteAccountSuccessTitle': '账户已删除',
+    'settings.deleteAccountSuccessMessage': '您的账户和本设备上的数据已清除。',
+    'settings.deleteAccountFailed': '无法删除账户。请退出后重试或联系支持。',
+    'settings.dangerZoneModalIntro':
+      '删除账户将永久清除我们服务器和本设备上与您相关的个人数据。',
+    'settings.dangerZoneModalBulletServer':
+      '云端：已保存汇率、提醒、转换器与计算器历史等记录。',
+    'settings.dangerZoneModalBulletDevice':
+      '本设备：偏好设置、草稿、缓存、仪表板布局及其他本地数据。',
+    'settings.dangerZoneModalBulletIrreversible':
+      '无法撤销。可使用同一邮箱再次注册，但将是全新的空账户。',
+    'settings.dangerZoneModalBulletSupport': '如有疑虑，请先联系客服。',
+    'settings.dangerZoneModalClose': '关闭',
+    'settings.dangerZoneModalContactSupport': '联系客服',
+    'settings.deleteAccountFinalGoogle':
+      '最后一步：需再次使用 Google 登录以验证身份，然后才会删除账户。',
+    'settings.deleteAccountFinalApple':
+      '最后一步：需再次使用 Apple 登录以验证身份，然后才会删除账户。',
+    'settings.deleteAccountPasswordTitle': '确认密码',
+    'settings.deleteAccountPasswordSubtitle': '请输入账户密码以永久删除账户。',
+    'settings.deleteAccountPasswordPlaceholder': '密码',
+    'settings.deleteAccountPasswordEmpty': '请输入密码。',
+    'settings.deleteAccountPasswordWrong': '密码错误，请重试。',
+    'settings.deleteAccountWrongOAuthAccount':
+      '您登录了其他账户。请使用与本应用相同的 Google 或 Apple 账号。',
+    'settings.deleteAccountUnsupportedAuth':
+      '当前登录方式无法在应用内完成删除账户，请联系客服。',
     'settings.enableNotifications': '启用通知',
     'settings.sound': '声音',
     'settings.vibration': '振动',
@@ -2067,7 +2259,8 @@ const translations = {
     'signup.accountCreated': '账户已创建！',
     'signup.checkEmail': '请检查您的邮箱并点击确认链接以激活您的账户。在确认邮箱之前，您将无法登录。',
     'signup.verifyTitle': '查收邮件',
-    'signup.verifySubtitle': '请输入邮件中的确认码，然后点击确认。',
+    'signup.verifySubtitle':
+      '请输入邮件中的 6 位验证码，或在本设备打开确认链接，然后点击确认。',
     'signup.codeLabel': '确认码',
     'signup.codePlaceholder': '邮件中的验证码',
     'signup.verifyEmailButton': '确认',
@@ -2081,6 +2274,9 @@ const translations = {
     'signup.passwordsDontMatch': '密码不匹配',
     'signup.passwordTooShort': '密码必须至少6个字符',
     'signup.alreadyHaveAccount': '已有账户？',
+    'signup.noVerificationEmail':
+      '未发送确认邮件。该邮箱可能已注册，请尝试登录。若是新账户，请检查垃圾邮件/推广邮件并稍等几分钟（发信有限额）。在 Supabase：Authentication → Providers → Email → 开启邮箱确认。',
+    'signup.verifySpamHint': '也请查看垃圾邮件或推广标签，邮件可能延迟几分钟。',
     'signup.signIn': '登录',
     'signup.selectLanguage': '选择语言',
 
@@ -2221,6 +2417,7 @@ const translations = {
     'settings.confirmNewPassword': 'नए पासवर्ड की पुष्टि करें',
     'settings.passwordUpdateDescription': 'अपना खाता सुरक्षित रखने के लिए अपना पासवर्ड अपडेट करें',
     'settings.termsOfUse': 'उपयोग की शर्तें',
+    'settings.privacyPolicy': 'गोपनीयता नीति',
     'settings.preferences': 'प्राथमिकताएं',
     'settings.theme': 'थीम',
     'settings.system': 'सिस्टम',
@@ -2243,6 +2440,40 @@ const translations = {
     'settings.contactSupport': 'सहायता से संपर्क करें',
     'settings.dangerZone': 'खतरनाक क्षेत्र',
     'settings.deleteAccount': 'खाता हटाएं',
+    'settings.deleteAccountTitle': 'खाता हटाएं?',
+    'settings.deleteAccountMessage':
+      'अंतिम पुष्टि: खाता और सभी संबंधित डेटा स्थायी रूप से हटा दिए जाएंगे।',
+    'settings.deleteAccountConfirm': 'स्थायी रूप से हटाएं',
+    'settings.deleteAccountSuccessTitle': 'खाता हटाया गया',
+    'settings.deleteAccountSuccessMessage': 'आपका खाता और इस डिवाइस का डेटा हटा दिया गया है।',
+    'settings.deleteAccountFailed':
+      'खाता नहीं हटाया जा सका। साइन आउट करके फिर कोशिश करें या सहायता से संपर्क करें।',
+    'settings.dangerZoneModalIntro':
+      'खाता हटाने पर सर्वर और इस डिवाइस पर आपका सारा व्यक्तिगत डेटा स्थायी रूप से मिट जाएगा।',
+    'settings.dangerZoneModalBulletServer':
+      'क्लाउड: सेव दरें, अलर्ट, कन्वर्टर व कैलकुलेटर इतिहास।',
+    'settings.dangerZoneModalBulletDevice':
+      'डिवाइस: प्राथमिकताएँ, ड्राफ़्ट, कैश, डैशबोर्ड लेआउट व अन्य स्थानीय डेटा।',
+    'settings.dangerZoneModalBulletIrreversible':
+      'पूर्ववत नहीं हो सकता। वही ईमेल से फिर साइन अप कर सकते हैं—नया खाली खाता होगा।',
+    'settings.dangerZoneModalBulletSupport':
+      'अनिश्चित हैं? आगे बढ़ने से पहले सहायता से संपर्क करें।',
+    'settings.dangerZoneModalClose': 'बंद करें',
+    'settings.dangerZoneModalContactSupport': 'सहायता से संपर्क',
+    'settings.deleteAccountFinalGoogle':
+      'अंतिम चरण: पहचान पुष्टि के लिए फिर Google से साइन इन करें, फिर खाता हटाया जाएगा।',
+    'settings.deleteAccountFinalApple':
+      'अंतिम चरण: पहचान पुष्टि के लिए फिर Apple से साइन इन करें, फिर खाता हटाया जाएगा।',
+    'settings.deleteAccountPasswordTitle': 'पासवर्ड की पुष्टि',
+    'settings.deleteAccountPasswordSubtitle':
+      'खाता स्थायी रूप से हटाने के लिए अपना पासवर्ड दर्ज करें।',
+    'settings.deleteAccountPasswordPlaceholder': 'पासवर्ड',
+    'settings.deleteAccountPasswordEmpty': 'कृपया पासवर्ड दर्ज करें।',
+    'settings.deleteAccountPasswordWrong': 'गलत पासवर्ड। फिर कोशिश करें।',
+    'settings.deleteAccountWrongOAuthAccount':
+      'आपने दूसरे खाते से साइन इन किया। इस ऐप वाले Google या Apple खाते का उपयोग करें।',
+    'settings.deleteAccountUnsupportedAuth':
+      'इस साइन-इन से ऐप में खाता हटाना संभव नहीं। सहायता से संपर्क करें।',
     'settings.enableNotifications': 'नोटिफिकेशन सक्षम करें',
     'settings.sound': 'ध्वनि',
     'settings.vibration': 'कंपन',
@@ -2470,7 +2701,8 @@ const translations = {
     'signup.accountCreated': 'खाता बनाया गया!',
     'signup.checkEmail': 'कृपया अपना ईमेल चेक करें और अपने खाते को सक्रिय करने के लिए कन्फर्मेशन लिंक पर क्लिक करें। ईमेल कन्फर्म करने तक आप साइन इन नहीं कर सकते।',
     'signup.verifyTitle': 'ईमेल चेक करें',
-    'signup.verifySubtitle': 'ईमेल से कन्फर्मेशन कोड दर्ज करें, फिर कन्फर्म दबाएँ।',
+    'signup.verifySubtitle':
+      'ईमेल का 6 अंकों वाला कोड दर्ज करें, या इस डिवाइस पर पुष्टि लिंक खोलें, फिर कन्फर्म दबाएँ।',
     'signup.codeLabel': 'कन्फर्मेशन कोड',
     'signup.codePlaceholder': 'ईमेल से कोड',
     'signup.verifyEmailButton': 'कन्फर्म करें',
@@ -2484,6 +2716,10 @@ const translations = {
     'signup.passwordsDontMatch': 'पासवर्ड मैच नहीं कर रहे',
     'signup.passwordTooShort': 'पासवर्ड कम से कम 6 कैरेक्टर का होना चाहिए',
     'signup.alreadyHaveAccount': 'पहले से खाता है?',
+    'signup.noVerificationEmail':
+      'पुष्टिकरण ईमेल नहीं भेजा गया। यह ईमेल पहले से पंजीकृत हो सकता है — साइन इन करें। नया खाता हो तो स्पैम/प्रमोशन जाँचें और कुछ मिनट प्रतीक्षा करें (ईमेल सीमा)। Supabase: Authentication → Providers → Email → ईमेल पुष्टि चालू करें।',
+    'signup.verifySpamHint':
+      'स्पैम या प्रमोशन फ़ोल्डर भी देखें। ईमेल में कुछ मिनट लग सकते हैं।',
     'signup.signIn': 'साइन इन',
     'signup.selectLanguage': 'भाषा चुनें',
 

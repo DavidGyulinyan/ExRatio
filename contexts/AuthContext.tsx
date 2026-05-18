@@ -11,11 +11,19 @@ import * as WebBrowser from "expo-web-browser";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   getSupabaseOAuthRedirectUrl,
+  getEmailAuthRedirectUrl,
   logDevExpoOAuthRedirectHint,
-  parseOAuthReturnUrl,
 } from "@/lib/oauthRedirect";
+import { SIGNUP_NO_VERIFICATION_EMAIL } from "@/lib/authErrors";
 import alertCheckerService from "@/lib/alertCheckerService";
 import { clearPersistedFormDraftsAfterSignOut } from "@/lib/amScreensDraft";
+import { clearAllLocalAppStorage } from "@/lib/clearLocalAppStorage";
+import {
+  getAccountDeletionAuthKind,
+  reauthenticateOAuthForDeletion,
+} from "@/lib/accountDeletionAuth";
+import { completeNativeOAuthExchange } from "@/lib/supabaseNativeOAuth";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -30,6 +38,13 @@ interface AuthContextType {
   ) => Promise<{ error?: AuthError; needsEmailConfirmation?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error?: AuthError }>;
   signOut: () => Promise<void>;
+  /**
+   * Deletes the auth user (server) and clears local data. Requires re-auth:
+   * email users must pass { password }; Google/Apple users must call without password (OAuth flow runs inside).
+   */
+  deleteAccount: (options?: {
+    password?: string;
+  }) => Promise<{ error?: AuthError }>;
   signInWithGoogle: () => Promise<{ error?: AuthError }>;
   signInWithApple: () => Promise<{ error?: AuthError }>;
   resetPassword: (email: string) => Promise<{ error?: AuthError }>;
@@ -131,10 +146,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       setLoading(true);
       console.log("Starting sign up process for email:", email);
 
+      const emailRedirectTo = getEmailAuthRedirectUrl();
+      if (__DEV__) {
+        logDevExpoOAuthRedirectHint(emailRedirectTo);
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo,
           data: {
             username: username || email.split("@")[0],
           },
@@ -144,6 +165,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (error) {
         console.error("Sign up error:", error);
         return { error };
+      }
+
+      // Duplicate / obfuscated signup: Supabase returns identities: [] (not omitted).
+      // Do not treat missing `identities` as duplicate — some responses omit the field.
+      if (data.user && !data.session) {
+        const ids = data.user.identities;
+        if (Array.isArray(ids) && ids.length === 0) {
+          return {
+            error: {
+              message: SIGNUP_NO_VERIFICATION_EMAIL,
+              name: "AuthApiError",
+            } as AuthError,
+          };
+        }
       }
 
       const needsEmailConfirmation = Boolean(
@@ -298,8 +333,99 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  const deleteAccount = async (options?: { password?: string }) => {
+    const supabase = getSupabaseClient() as SupabaseClient | null;
+    if (!supabase) {
+      return {
+        error: { message: "Authentication service not available" } as AuthError,
+      };
+    }
+
+    try {
+      setLoading(true);
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      if (!currentUser?.email) {
+        return {
+          error: {
+            message: "You must be signed in to delete your account.",
+          } as AuthError,
+        };
+      }
+
+      const kind = getAccountDeletionAuthKind(currentUser);
+      if (!kind) {
+        return {
+          error: {
+            message: "DELETE_AUTH_UNSUPPORTED",
+            name: "UnsupportedAuth",
+          } as AuthError,
+        };
+      }
+
+      if (kind === "password") {
+        const pw = options?.password?.trim();
+        if (!pw) {
+          return {
+            error: {
+              message: "PASSWORD_REQUIRED",
+              name: "PasswordRequired",
+            } as AuthError,
+          };
+        }
+        const { error: signErr } = await supabase.auth.signInWithPassword({
+          email: currentUser.email,
+          password: pw,
+        });
+        if (signErr) {
+          return { error: signErr };
+        }
+      } else if (kind === "google") {
+        const { error: reErr } = await reauthenticateOAuthForDeletion(
+          supabase,
+          "google"
+        );
+        if (reErr) {
+          return { error: reErr };
+        }
+      } else if (kind === "apple") {
+        const { error: reErr } = await reauthenticateOAuthForDeletion(
+          supabase,
+          "apple"
+        );
+        if (reErr) {
+          return { error: reErr };
+        }
+      }
+
+      const { error: rpcError } = await supabase.rpc("delete_own_account");
+      if (rpcError) {
+        return {
+          error: {
+            message: rpcError.message || "Failed to delete account",
+            name: "RpcError",
+          } as AuthError,
+        };
+      }
+
+      await clearAllLocalAppStorage();
+      await supabase.auth.signOut({ scope: "local" });
+      setSession(null);
+      setUser(null);
+      alertCheckerService.stopChecking();
+      setFormDraftResetEpoch((n) => n + 1);
+      return {};
+    } catch (error) {
+      console.error("deleteAccount:", error);
+      return { error: error as AuthError };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signInWithGoogle = async () => {
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseClient() as SupabaseClient | null;
     if (!supabase) {
       return {
         error: { message: "Authentication service not available" } as AuthError,
@@ -309,102 +435,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       setLoading(true);
       console.log("Starting Google sign in");
-
-      const redirectTo = getSupabaseOAuthRedirectUrl();
-      logDevExpoOAuthRedirectHint(redirectTo);
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) {
-        console.log("Google sign-in error:", error.message);
-        return { error };
+      const result = await completeNativeOAuthExchange(supabase, "google");
+      if (!result.error) {
+        console.log("Google sign in completed successfully");
       }
-
-      if (!data?.url) {
-        return {
-          error: {
-            message: "Unable to start Google sign-in flow.",
-            name: "OAuthStartError",
-          } as AuthError,
-        };
-      }
-
-      const authResult = await WebBrowser.openAuthSessionAsync(
-        data.url,
-        redirectTo
-      );
-
-      if (authResult.type !== "success" || !authResult.url) {
-        return {
-          error: {
-            message:
-              authResult.type === "cancel"
-                ? "Google sign-in was cancelled."
-                : "Google sign-in did not complete. Please try again.",
-            name: "OAuthCancelled",
-          } as AuthError,
-        };
-      }
-
-      const parsed = parseOAuthReturnUrl(authResult.url);
-      if (parsed.error) {
-        return {
-          error: {
-            message:
-              parsed.errorDescription?.replace(/\+/g, " ") ??
-              `Google sign-in failed: ${parsed.error}`,
-            name: "OAuthError",
-          } as AuthError,
-        };
-      }
-
-      if (parsed.access_token && parsed.refresh_token) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: parsed.access_token,
-          refresh_token: parsed.refresh_token,
-        });
-        if (sessionError) {
-          return { error: sessionError };
-        }
-        console.log("Google sign in completed successfully (session tokens)");
-        return {};
-      }
-
-      if (parsed.code) {
-        const { error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(parsed.code);
-        if (exchangeError) {
-          const msg = exchangeError.message ?? "";
-          const { data: existing } = await supabase.auth.getSession();
-          if (
-            existing.session &&
-            (msg.includes("code verifier") || msg.includes("auth code"))
-          ) {
-            console.log(
-              "Google sign in: session already established (duplicate PKCE exchange skipped)"
-            );
-            return {};
-          }
-          return { error: exchangeError };
-        }
-        console.log("Google sign in completed successfully (PKCE code)");
-        return {};
-      }
-
-      return {
-        error: {
-          message:
-            "Google sign-in did not return a code or session. Check Supabase Redirect URLs include: " +
-            redirectTo,
-          name: "OAuthCodeMissing",
-        } as AuthError,
-      };
+      return result;
     } catch (error) {
       console.error("Google sign in catch error:", error);
       return { error: error as AuthError };
@@ -414,7 +449,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const signInWithApple = async () => {
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseClient() as SupabaseClient | null;
     if (!supabase) {
       return {
         error: { message: "Authentication service not available" } as AuthError,
@@ -424,23 +459,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       setLoading(true);
       console.log("Starting Apple sign in");
-
-      const redirectTo = getSupabaseOAuthRedirectUrl();
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "apple",
-        options: {
-          redirectTo,
-        },
-      });
-
-      if (error) {
-        console.log("Apple sign-in error:", error.message);
-        return { error };
+      const result = await completeNativeOAuthExchange(supabase, "apple");
+      if (!result.error) {
+        console.log("Apple sign in completed successfully");
       }
-
-      console.log("Apple sign in initiated successfully");
-      return {};
+      return result;
     } catch (error) {
       console.error("Apple sign in catch error:", error);
       return { error: error as AuthError };
@@ -531,6 +554,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     signUp,
     signIn,
     signOut,
+    deleteAccount,
     signInWithGoogle,
     signInWithApple,
     resetPassword,

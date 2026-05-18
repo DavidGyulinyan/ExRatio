@@ -22,6 +22,7 @@ import Logo from '@/components/Logo';
 import AuthButtons from '@/components/AuthButtons';
 import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
+import { SIGNUP_NO_VERIFICATION_EMAIL } from '@/lib/authErrors';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -249,7 +250,11 @@ function SignUpScreen() {
         username
       );
       if (error) {
-        Alert.alert(t('auth.signup'), error.message);
+        const msg =
+          error.message === SIGNUP_NO_VERIFICATION_EMAIL
+            ? t('signup.noVerificationEmail')
+            : error.message;
+        Alert.alert(t('auth.signup'), msg);
       } else if (needsEmailConfirmation) {
         setEmailOtp('');
         setPendingVerificationEmail(email.trim());
@@ -342,6 +347,9 @@ function SignUpScreen() {
               {pendingVerificationEmail ? (
                 <>
                   <Text style={styles.emailPreview}>{pendingVerificationEmail}</Text>
+                  <Text style={[styles.footerText, { textAlign: 'center', marginBottom: 12 }]}>
+                    {t('signup.verifySpamHint')}
+                  </Text>
                   <View style={styles.fieldGroup}>
                     <Text style={styles.label}>{t('signup.codeLabel')}</Text>
                     <TextInput
