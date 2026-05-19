@@ -44,3 +44,7 @@ app-example
 /.env
 /.idea
 /.vscode
+
+# Google Play upload (never commit)
+google-play-service-account.json
+google-services.json

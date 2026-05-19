@@ -165,20 +165,31 @@ Tests cover calculator evaluation, Armenian payroll/leave logic, exchange-rate h
 
 ## Building & updates
 
-Production builds use [EAS Build](https://docs.expo.dev/build/introduction/):
+### Google Play Store
+
+See **[docs/PLAY_STORE.md](docs/PLAY_STORE.md)** for the full checklist (EAS secrets, AAB build, signing, submit).
 
 ```bash
-eas build --platform ios
-eas build --platform android
+# Production AAB for Play Store
+npm run build:android
+
+# Upload latest AAB (after service account is configured)
+npm run submit:android
 ```
 
-OTA updates (configured in `app.json`):
+### iOS / general
 
 ```bash
-eas update --channel preview
+eas build --platform ios --profile production
 ```
 
-Set the same `EXPO_PUBLIC_*` variables in EAS secrets or `eas.json` env for production builds.
+OTA updates (production channel):
+
+```bash
+eas update --channel production --message "Your update notes"
+```
+
+Set `EXPO_PUBLIC_API_KEY` and Supabase variables as [EAS project secrets](https://docs.expo.dev/build-reference/variables/#using-secrets-in-environment-variables); copy `.env.example` to `.env` for local dev.
 
 ## Important disclaimers
 
