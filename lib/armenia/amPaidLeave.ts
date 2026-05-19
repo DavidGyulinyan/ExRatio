@@ -1,27 +1,42 @@
-import { AM_TAX_CONSTANTS as C } from "./amTaxConstants";
+import {
+  resolveAverageDailyGross,
+  type AverageSalaryBasisMode,
+  type WorkWeekSchedule,
+} from "./amAverageSalary";
 import { estimateGrossFromNet, payrollBreakdownFromGross } from "./amPayroll";
+
+export type { WorkWeekSchedule } from "./amAverageSalary";
+export type PaidLeaveBasisMode = AverageSalaryBasisMode;
 
 export type PaidLeaveInput = {
   monthlyAmount: number;
   isGross: boolean;
   leaveDays: number;
-  useWorkingDayBasis: boolean;
+  workWeek: WorkWeekSchedule;
+  basisMode: PaidLeaveBasisMode;
+  variablePayGross: number;
+  countingMonths: number;
 };
 
 export type PaidLeaveResult = {
+  basisMode: PaidLeaveBasisMode;
+  workWeek: WorkWeekSchedule;
   monthlyGross: number;
   monthlyNet: number;
   monthlyBreakdown: ReturnType<typeof payrollBreakdownFromGross>;
+  totalRemunerationGross: number;
+  monthsForAverage: number;
+  averageMonthlyGross: number;
   averageDailyGross: number;
   averageDailyNet: number;
+  dailyDivisor: number;
   leaveGross: number;
   leaveNet: number;
   leaveBreakdown: ReturnType<typeof payrollBreakdownFromGross>;
 };
 
 /**
- * Standard paid leave (ֆիզ արձակուրդ): approximate daily rate × leave days.
- * Vacation pay is then modeled as a one-time gross using the same withholding stack (illustrative).
+ * Annual leave pay (արձակուրդային վճար) per RA Labor Code Art. 167: average daily × leave days.
  */
 export function calculatePaidLeave(input: PaidLeaveInput): PaidLeaveResult | null {
   if (
@@ -32,23 +47,36 @@ export function calculatePaidLeave(input: PaidLeaveInput): PaidLeaveResult | nul
   ) {
     return null;
   }
-  const monthlyGross = input.isGross
-    ? input.monthlyAmount
-    : estimateGrossFromNet(input.monthlyAmount);
-  const monthlyBreakdown = payrollBreakdownFromGross(monthlyGross);
-  const divisor = input.useWorkingDayBasis
-    ? C.WORKING_DAYS_PER_MONTH_FOR_LEAVE
-    : C.CALENDAR_DAYS_PER_MONTH;
-  const averageDailyGross = monthlyGross / divisor;
-  const averageDailyNet = monthlyBreakdown.netSalary / divisor;
-  const leaveGross = averageDailyGross * input.leaveDays;
+
+  const average = resolveAverageDailyGross({
+    monthlyAmount: input.monthlyAmount,
+    isGross: input.isGross,
+    basisMode: input.basisMode,
+    variablePayGross: input.variablePayGross,
+    countingMonths: input.countingMonths,
+    workWeek: input.workWeek,
+  });
+  if (!average) return null;
+
+  const monthlyBreakdown = payrollBreakdownFromGross(average.monthlyGross);
+  const averageDailyNet =
+    (monthlyBreakdown.netSalary / average.monthlyGross) * average.averageDailyGross;
+
+  const leaveGross = average.averageDailyGross * input.leaveDays;
   const leaveBreakdown = payrollBreakdownFromGross(leaveGross);
+
   return {
-    monthlyGross,
+    basisMode: input.basisMode,
+    workWeek: input.workWeek,
+    monthlyGross: average.monthlyGross,
     monthlyNet: monthlyBreakdown.netSalary,
     monthlyBreakdown,
-    averageDailyGross,
+    totalRemunerationGross: average.totalRemunerationGross,
+    monthsForAverage: average.monthsForAverage,
+    averageMonthlyGross: average.averageMonthlyGross,
+    averageDailyGross: average.averageDailyGross,
     averageDailyNet,
+    dailyDivisor: average.dailyDivisor,
     leaveGross,
     leaveNet: leaveBreakdown.netSalary,
     leaveBreakdown,

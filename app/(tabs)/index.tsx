@@ -103,7 +103,6 @@ const QUICK_ACTION_ORDER_DEFAULT = [
   "alerts",
   "charts",
   "tourist",
-  "vacation",
 ] as const;
 
 type DashboardQuickActionId = (typeof QUICK_ACTION_ORDER_DEFAULT)[number];
@@ -415,12 +414,6 @@ export default function HomeScreen() {
           onPress: () => go(() => setShowTouristCalc(true)),
         },
         {
-          id: "vacation",
-          label: t("quick.action.vacationCalc"),
-          icon: "calendar-outline",
-          onPress: () => go(() => openArmeniaFinance("paidLeave")),
-        },
-        {
           id: "amFinance",
           label: t("amFinance.sectionTitle"),
           icon: "flag-outline",
@@ -477,7 +470,7 @@ export default function HomeScreen() {
       openRateAlerts: () => openQuickFromMenu(() => setShowRateAlerts(true)),
       openCalculator: () => openQuickFromMenu(() => setShowCalculator(true)),
       openLoanCalculator: () => openQuickFromMenu(() => setShowLoanCalculator(true)),
-      openVacationCalculator: () =>
+      openLeavePayCalculator: () =>
         openQuickFromMenu(() => openArmeniaFinance("paidLeave")),
       openArmeniaFinance: () => openQuickFromMenu(() => openArmeniaFinance("menu")),
       openArmeniaTransport: () => openQuickFromMenu(() => openArmeniaTransport("menu")),
@@ -537,12 +530,6 @@ export default function HomeScreen() {
         active: showTouristCalc,
         onPress: () => setShowTouristCalc(!showTouristCalc),
       },
-      vacation: {
-        labelKey: "quick.action.vacationCalc",
-        icon: "calendar-outline",
-        active: false,
-        onPress: () => openArmeniaFinance("paidLeave"),
-      },
     };
     return defs;
   }, [
@@ -566,8 +553,8 @@ export default function HomeScreen() {
       }
     > = {
       paidLeave: {
-        labelKey: "amFinance.card.paidLeave",
-        icon: "umbrella-outline",
+        labelKey: "amFinance.card.leavePay",
+        icon: "calendar-outline",
         onPress: () => openArmeniaFinance("paidLeave"),
       },
       maternity: {
@@ -837,19 +824,21 @@ export default function HomeScreen() {
         ]);
         if (cancelled) return;
         if (qaRaw) {
+          const qaParsed = JSON.parse(qaRaw) as unknown;
+          const qaMigrated = Array.isArray(qaParsed)
+            ? qaParsed.filter((id) => id !== "vacation" && id !== "disabilityBenefit")
+            : qaParsed;
           setQuickActionOrder(
-            normalizeDashboardCardOrder(
-              JSON.parse(qaRaw) as unknown,
-              DEFAULT_QUICK_ACTION_ORDER
-            )
+            normalizeDashboardCardOrder(qaMigrated, DEFAULT_QUICK_ACTION_ORDER)
           );
         }
         if (finRaw) {
+          const parsed = JSON.parse(finRaw) as unknown;
+          const migrated = Array.isArray(parsed)
+            ? parsed.map((id) => (id === "disabilityBenefit" ? "paidLeave" : id))
+            : parsed;
           setAmFinanceCardOrder(
-            normalizeDashboardCardOrder(
-              JSON.parse(finRaw) as unknown,
-              DEFAULT_AM_FINANCE_CARD_ORDER
-            )
+            normalizeDashboardCardOrder(migrated, DEFAULT_AM_FINANCE_CARD_ORDER)
           );
         }
         if (trRaw) {

@@ -62,7 +62,8 @@ const translations = {
     'quick.action.calculator.desc': 'Open basic math calculator',
     'quick.action.calculator.hide': 'Hide calculator widget',
     'quick.action.loanCalculator': 'Loan calculator',
-    'quick.action.vacationCalc': 'Vacation pay calculator',
+    'quick.action.vacationCalc': 'Vacation pay',
+    'quick.action.disabilityBenefit': 'Sick leave benefit',
     'quick.toolsMenu': 'Other tools',
     'quick.action.touristCalc': 'Tourist calculator',
 
@@ -600,7 +601,8 @@ const translations = {
     'quick.action.calculator.desc': 'Բացել բազմաֆունկցիոնալ հաշվիչը',
     'quick.action.calculator.hide': 'Թաքցնել հաշվիչը',
     'quick.action.loanCalculator': 'Վարկի հաշվիչ',
-    'quick.action.vacationCalc': 'Անաշխատունակության արձակուրդի հաշվիչ',
+    'quick.action.vacationCalc': 'Արձակուրդային վճար',
+    'quick.action.disabilityBenefit': 'Անաշխատունակության վճար',
     'quick.toolsMenu': 'Այլ գործիքներ',
     'quick.action.touristCalc': 'Տուրիստական հաշվիչ',
 
@@ -1124,7 +1126,8 @@ const translations = {
     'quick.action.calculator.desc': 'Открыть базовый математический калькулятор',
     'quick.action.calculator.hide': 'Скрыть виджет калькулятора',
     'quick.action.loanCalculator': 'Кредитный калькулятор',
-    'quick.action.vacationCalc': 'Калькулятор отпускных',
+    'quick.action.vacationCalc': 'Отпускные',
+    'quick.action.disabilityBenefit': 'Пособие по нетрудоспособности',
     'quick.toolsMenu': 'Другие инструменты',
     'quick.action.touristCalc': 'Туристический калькулятор',
 

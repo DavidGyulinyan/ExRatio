@@ -8,11 +8,18 @@ const AM_FREELANCE_KEY = "capital.amFreelance.forms.v1";
 const LOAN_CALCULATOR_KEY = "capital.loanCalculator.v1";
 
 export type AmFinanceFormsDraft = {
+  /** Shared income basis + annual leave days + sick-leave working days. */
   paidLeave: {
     salaryStr: string;
     leaveStr: string;
+    sickDaysStr: string;
     isGross: boolean;
-    workingDayBasis: boolean;
+    workWeek: "fiveDay" | "sixDay";
+    basisMode: "twelveMonth" | "singleMonth";
+    variablePayStr: string;
+    countingMonthsStr: string;
+    /** @deprecated Migrated to workWeek. */
+    workingDayBasis?: boolean;
   };
   maternity: {
     salaryStr: string;
@@ -96,8 +103,12 @@ export function defaultAmFinanceDraft(): AmFinanceFormsDraft {
     paidLeave: {
       salaryStr: "",
       leaveStr: "",
+      sickDaysStr: "",
       isGross: false,
-      workingDayBasis: true,
+      workWeek: "fiveDay",
+      basisMode: "twelveMonth",
+      variablePayStr: "",
+      countingMonthsStr: "12",
     },
     maternity: {
       salaryStr: "",
@@ -176,6 +187,42 @@ export function defaultAmFreelanceDraft(): AmFreelanceFormsDraft {
   };
 }
 
+type IncomeBasisDraft = {
+  salaryStr: string;
+  isGross: boolean;
+  workWeek: "fiveDay" | "sixDay";
+  basisMode: "twelveMonth" | "singleMonth";
+  variablePayStr: string;
+  countingMonthsStr: string;
+  workingDayBasis?: boolean;
+};
+
+function mergeIncomeBasisDraft<T extends IncomeBasisDraft>(
+  base: T,
+  raw: Partial<T> | undefined,
+  daysKey: keyof T
+): T {
+  const pl = { ...base, ...raw };
+  let workWeek = pl.workWeek;
+  if (workWeek !== "fiveDay" && workWeek !== "sixDay") {
+    workWeek = pl.workingDayBasis === false ? "sixDay" : "fiveDay";
+  }
+  const basisMode =
+    pl.basisMode === "singleMonth" || pl.basisMode === "twelveMonth"
+      ? pl.basisMode
+      : "twelveMonth";
+  return {
+    ...pl,
+    salaryStr: pl.salaryStr ?? "",
+    [daysKey]: (pl[daysKey] as string) ?? "",
+    isGross: typeof pl.isGross === "boolean" ? pl.isGross : false,
+    workWeek,
+    basisMode,
+    variablePayStr: pl.variablePayStr ?? "",
+    countingMonthsStr: pl.countingMonthsStr ?? "12",
+  } as T;
+}
+
 function mergeFinance(
   base: AmFinanceFormsDraft,
   raw: unknown
@@ -184,7 +231,32 @@ function mergeFinance(
   const o = raw as Partial<AmFinanceFormsDraft>;
   const mRaw = { ...base.maternity, ...o.maternity };
   return {
-    paidLeave: { ...base.paidLeave, ...o.paidLeave },
+    paidLeave: (() => {
+      const dis = (o as { disabilityBenefit?: Partial<AmFinanceFormsDraft["paidLeave"]> })
+        .disabilityBenefit;
+      const raw = { ...base.paidLeave, ...o.paidLeave };
+      if (dis) {
+        if (!raw.salaryStr && dis.salaryStr) raw.salaryStr = dis.salaryStr;
+        if (!raw.sickDaysStr && dis.sickDaysStr) raw.sickDaysStr = dis.sickDaysStr;
+        if (!raw.variablePayStr && dis.variablePayStr) raw.variablePayStr = dis.variablePayStr;
+        if (raw.isGross === base.paidLeave.isGross && typeof dis.isGross === "boolean") {
+          raw.isGross = dis.isGross;
+        }
+        if (raw.workWeek === base.paidLeave.workWeek && dis.workWeek) raw.workWeek = dis.workWeek;
+        if (raw.basisMode === base.paidLeave.basisMode && dis.basisMode) {
+          raw.basisMode = dis.basisMode;
+        }
+        if (raw.countingMonthsStr === "12" && dis.countingMonthsStr) {
+          raw.countingMonthsStr = dis.countingMonthsStr;
+        }
+      }
+      const merged = mergeIncomeBasisDraft(
+        { ...base.paidLeave, sickDaysStr: "" },
+        raw,
+        "leaveStr"
+      );
+      return { ...merged, sickDaysStr: raw.sickDaysStr ?? "" };
+    })(),
     maternity: {
       ...mRaw,
       complicatedBirth:

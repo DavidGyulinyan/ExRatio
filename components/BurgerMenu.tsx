@@ -25,8 +25,8 @@ export type BurgerMenuQuickActions = {
   openRateAlerts: () => void;
   openCalculator: () => void;
   openLoanCalculator: () => void;
-  /** Opens RA finance modal on the paid-leave / vacation-pay screen. */
-  openVacationCalculator?: () => void;
+  /** Opens combined vacation + sick-leave pay calculator. */
+  openLeavePayCalculator?: () => void;
   openArmeniaFinance?: () => void;
   openArmeniaTransport?: () => void;
 };
@@ -137,13 +137,13 @@ export default function BurgerMenu({ style, quickActions }: BurgerMenuProps) {
           icon: 'wallet-outline',
           onPress: () => closeThen(quickActions.openLoanCalculator),
         },
-        ...(quickActions.openVacationCalculator
+        ...(quickActions.openLeavePayCalculator
           ? [
               {
-                id: 'qa-vacation',
-                title: t('quick.action.vacationCalc'),
+                id: 'qa-leave-pay',
+                title: t('amFinance.card.leavePay'),
                 icon: 'calendar-outline' as const,
-                onPress: () => closeThen(quickActions.openVacationCalculator!),
+                onPress: () => closeThen(quickActions.openLeavePayCalculator!),
               },
             ]
           : []),

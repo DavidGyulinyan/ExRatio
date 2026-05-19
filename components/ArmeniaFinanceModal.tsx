@@ -22,8 +22,10 @@ import {
   calculateDeposit,
   calculateMaternity,
   calculatePaidLeave,
+  calculateTemporaryDisability,
   estimateGrossFromNet,
   payrollBreakdownFromGross,
+  resolveAverageDailyGross,
 } from "@/lib/armenia";
 import {
   defaultAmFinanceDraft,
@@ -235,7 +237,7 @@ function MenuView({
     onShareableMessageChange(
       [
         t("amFinance.sectionTitle"),
-        `• ${t("amFinance.card.paidLeave")}`,
+        `• ${t("amFinance.card.leavePay")}`,
         `• ${t("amFinance.card.maternity")}`,
         `• ${t("amFinance.card.salary")}`,
         `• ${t("amFinance.card.deposit")}`,
@@ -247,9 +249,9 @@ function MenuView({
     [
       {
         id: "paidLeave",
-        icon: "umbrella-outline",
-        title: t("amFinance.card.paidLeave"),
-        desc: t("amFinance.card.paidLeave.desc"),
+        icon: "calendar-outline",
+        title: t("amFinance.card.leavePay"),
+        desc: t("amFinance.card.leavePay.desc"),
       },
       {
         id: "maternity",
@@ -335,6 +337,69 @@ function MenuView({
   );
 }
 
+function TwoOptionSegment({
+  onChange,
+  optionA,
+  optionB,
+  borderColor,
+  surfaceColor,
+  primaryColor,
+  textSecondaryColor,
+}: {
+  onChange: (next: boolean) => void;
+  optionA: { label: string; selected: boolean };
+  optionB: { label: string; selected: boolean };
+  borderColor: string;
+  surfaceColor: string;
+  primaryColor: string;
+  textSecondaryColor: string;
+}) {
+  return (
+    <View style={[styles.segment, { borderColor, backgroundColor: surfaceColor }]}>
+      <TouchableOpacity
+        style={[
+          styles.segmentBtn,
+          optionA.selected && { backgroundColor: hexToRgba(primaryColor, 0.2) },
+        ]}
+        onPress={() => onChange(true)}
+      >
+        <ThemedText
+          type="caption"
+          numberOfLines={3}
+          ellipsizeMode="tail"
+          style={{
+            textAlign: "center",
+            fontWeight: "700",
+            color: optionA.selected ? primaryColor : textSecondaryColor,
+          }}
+        >
+          {optionA.label}
+        </ThemedText>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.segmentBtn,
+          optionB.selected && { backgroundColor: hexToRgba(primaryColor, 0.2) },
+        ]}
+        onPress={() => onChange(false)}
+      >
+        <ThemedText
+          type="caption"
+          numberOfLines={3}
+          ellipsizeMode="tail"
+          style={{
+            textAlign: "center",
+            fontWeight: "700",
+            color: optionB.selected ? primaryColor : textSecondaryColor,
+          }}
+        >
+          {optionB.label}
+        </ThemedText>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 function SalaryTypeToggle({
   isGross,
   setIsGross,
@@ -355,48 +420,15 @@ function SalaryTypeToggle({
   textSecondaryColor: string;
 }) {
   return (
-    <View style={[styles.segment, { borderColor, backgroundColor: surfaceColor }]}>
-        <TouchableOpacity
-          style={[
-            styles.segmentBtn,
-            isGross && { backgroundColor: hexToRgba(primaryColor, 0.2) },
-          ]}
-          onPress={() => setIsGross(true)}
-        >
-          <ThemedText
-            type="caption"
-            numberOfLines={2}
-            ellipsizeMode="tail"
-            style={{
-              textAlign: "center",
-              fontWeight: "700",
-              color: isGross ? primaryColor : textSecondaryColor,
-            }}
-          >
-            {t("amFinance.gross")}
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.segmentBtn,
-            !isGross && { backgroundColor: hexToRgba(primaryColor, 0.2) },
-          ]}
-          onPress={() => setIsGross(false)}
-        >
-          <ThemedText
-            type="caption"
-            numberOfLines={2}
-            ellipsizeMode="tail"
-            style={{
-              textAlign: "center",
-              fontWeight: "700",
-              color: !isGross ? primaryColor : textSecondaryColor,
-            }}
-          >
-            {t("amFinance.net")}
-          </ThemedText>
-        </TouchableOpacity>
-    </View>
+    <TwoOptionSegment
+      onChange={setIsGross}
+      optionA={{ label: t("amFinance.gross"), selected: isGross }}
+      optionB={{ label: t("amFinance.net"), selected: !isGross }}
+      borderColor={borderColor}
+      surfaceColor={surfaceColor}
+      primaryColor={primaryColor}
+      textSecondaryColor={textSecondaryColor}
+    />
   );
 }
 
@@ -411,6 +443,7 @@ function Field({
   textColor,
   textSecondaryColor,
   numberGrouping,
+  hint,
 }: {
   label: string;
   value: string;
@@ -423,6 +456,7 @@ function Field({
   textSecondaryColor: string;
   /** When set, value is stored without thousand separators; shown grouped in the field. */
   numberGrouping?: "integer" | "decimal";
+  hint?: string;
 }) {
   const displayValue =
     numberGrouping === "integer"
@@ -468,6 +502,15 @@ function Field({
           },
         ]}
       />
+      {hint ? (
+        <ThemedText
+          type="caption"
+          numberOfLines={4}
+          style={{ color: textSecondaryColor, marginTop: 6 }}
+        >
+          {hint}
+        </ThemedText>
+      ) : null}
     </View>
   );
 }
@@ -551,34 +594,75 @@ function PaidLeaveView({
 }) {
   const surfaceColor = useThemeColor({}, "surface");
   const { draft, setDraft } = useAmFinanceDraft();
-  const { salaryStr, leaveStr, isGross, workingDayBasis } = draft.paidLeave;
+  const {
+    salaryStr,
+    leaveStr,
+    sickDaysStr,
+    isGross,
+    workWeek,
+    basisMode,
+    variablePayStr,
+    countingMonthsStr,
+  } = draft.paidLeave;
 
-  const result = useMemo(() => {
+  const patch = (partial: Partial<typeof draft.paidLeave>) =>
+    setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, ...partial } }));
+
+  const incomeInputs = useMemo(() => {
     const salary = parseNum(salaryStr);
-    const days = parseNum(leaveStr);
-    if (salary === null || days === null || salary <= 0 || days <= 0) return null;
-    return calculatePaidLeave({
+    const variablePay = parseNum(variablePayStr) ?? 0;
+    const countingMonths = parseNum(countingMonthsStr) ?? 12;
+    if (salary === null || salary <= 0) return null;
+    return {
       monthlyAmount: salary,
       isGross,
-      leaveDays: days,
-      useWorkingDayBasis: workingDayBasis,
+      workWeek,
+      basisMode,
+      variablePayGross: variablePay,
+      countingMonths,
+    };
+  }, [salaryStr, isGross, workWeek, basisMode, variablePayStr, countingMonthsStr]);
+
+  const sharedAverage = useMemo(() => {
+    if (!incomeInputs) return null;
+    return resolveAverageDailyGross(incomeInputs);
+  }, [incomeInputs]);
+
+  const vacationResult = useMemo(() => {
+    const days = parseNum(leaveStr);
+    if (!incomeInputs || days === null || days <= 0) return null;
+    return calculatePaidLeave({ ...incomeInputs, leaveDays: days });
+  }, [incomeInputs, leaveStr]);
+
+  const sickResult = useMemo(() => {
+    const days = parseNum(sickDaysStr);
+    if (!incomeInputs || days === null || days <= 0) return null;
+    return calculateTemporaryDisability({
+      ...incomeInputs,
+      sickLeaveWorkingDays: days,
     });
-  }, [salaryStr, leaveStr, isGross, workingDayBasis]);
+  }, [incomeInputs, sickDaysStr]);
 
   useEffect(() => {
     if (!onShareableMessageChange) return;
-    if (!result) {
-      onShareableMessageChange(null);
-      return;
+    const lines: string[] = [t("amFinance.card.leavePay")];
+    if (sharedAverage) {
+      lines.push(
+        `${t("amFinance.paidLeave.averageMonthly")}: ${formatAmd(sharedAverage.averageMonthlyGross)}`,
+        `${t("amFinance.averageDailyGross")}: ${formatAmd(sharedAverage.averageDailyGross)}`
+      );
     }
-    onShareableMessageChange(
-      [
-        t("amFinance.card.paidLeave"),
-        `${t("amFinance.paidLeaveGross")}: ${formatAmd(result.leaveGross)}`,
-        `${t("amFinance.paidLeaveNet")}: ${formatAmd(result.leaveNet)}`,
-      ].join("\n")
-    );
-  }, [result, t, onShareableMessageChange]);
+    if (vacationResult) {
+      lines.push(
+        `${t("amFinance.paidLeaveGross")}: ${formatAmd(vacationResult.leaveGross)}`,
+        `${t("amFinance.paidLeaveNet")}: ${formatAmd(vacationResult.leaveNet)}`
+      );
+    }
+    if (sickResult) {
+      lines.push(`${t("amFinance.disability.totalBenefit")}: ${formatAmd(sickResult.totalBenefitGross)}`);
+    }
+    onShareableMessageChange(lines.length > 1 ? lines.join("\n") : null);
+  }, [sharedAverage, vacationResult, sickResult, t, onShareableMessageChange]);
 
   return (
     <View style={[styles.card, styles.cardClip, { backgroundColor: surfaceColor, borderColor }]}>
@@ -588,14 +672,17 @@ function PaidLeaveView({
         ellipsizeMode="tail"
         style={[styles.cardTitle, { color: textColor }]}
       >
-        {t("amFinance.card.paidLeave")}
+        {t("amFinance.card.leavePay")}
       </ThemedText>
       <TouchableOpacity
         onPress={() =>
-          setDraft((d) => ({
-            ...d,
-            paidLeave: { ...d.paidLeave, salaryStr: "", leaveStr: "" },
-          }))
+          patch({
+            salaryStr: "",
+            leaveStr: "",
+            sickDaysStr: "",
+            variablePayStr: "",
+            countingMonthsStr: "12",
+          })
         }
         style={[styles.clearAllRow, { borderColor }]}
         accessibilityRole="button"
@@ -607,9 +694,7 @@ function PaidLeaveView({
       </TouchableOpacity>
       <SalaryTypeToggle
         isGross={isGross}
-        setIsGross={(v) =>
-          setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, isGross: v } }))
-        }
+        setIsGross={(v) => patch({ isGross: v })}
         t={t}
         borderColor={borderColor}
         surfaceColor={surfaceColor}
@@ -617,100 +702,262 @@ function PaidLeaveView({
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
       />
+      <ThemedText
+        type="caption"
+        numberOfLines={2}
+        style={{ color: textSecondaryColor, marginBottom: 6 }}
+      >
+        {t("amFinance.paidLeave.basisLabel")}
+      </ThemedText>
+      <TwoOptionSegment
+        onChange={(twelveMonth) =>
+          patch({ basisMode: twelveMonth ? "twelveMonth" : "singleMonth" })
+        }
+        optionA={{
+          label: t("amFinance.paidLeave.basisTwelveMonth"),
+          selected: basisMode === "twelveMonth",
+        }}
+        optionB={{
+          label: t("amFinance.paidLeave.basisSingleMonth"),
+          selected: basisMode === "singleMonth",
+        }}
+        borderColor={borderColor}
+        surfaceColor={surfaceColor}
+        primaryColor={primaryColor}
+        textSecondaryColor={textSecondaryColor}
+      />
+      <ThemedText
+        type="caption"
+        numberOfLines={2}
+        style={{ color: textSecondaryColor, marginBottom: 6 }}
+      >
+        {t("amFinance.paidLeave.workWeekLabel")}
+      </ThemedText>
+      <TwoOptionSegment
+        onChange={(fiveDay) => patch({ workWeek: fiveDay ? "fiveDay" : "sixDay" })}
+        optionA={{
+          label: t("amFinance.paidLeave.workWeekFive"),
+          selected: workWeek === "fiveDay",
+        }}
+        optionB={{
+          label: t("amFinance.paidLeave.workWeekSix"),
+          selected: workWeek === "sixDay",
+        }}
+        borderColor={borderColor}
+        surfaceColor={surfaceColor}
+        primaryColor={primaryColor}
+        textSecondaryColor={textSecondaryColor}
+      />
       <Field
         label={t("amFinance.monthlySalary")}
         value={salaryStr}
-        onChangeText={(salaryStr) =>
-          setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, salaryStr } }))
-        }
+        onChangeText={(salaryStr) => patch({ salaryStr })}
         borderColor={borderColor}
         surfaceColor={surfaceColor}
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
         numberGrouping="integer"
+        hint={t("amFinance.monthlySalary.hint")}
       />
-      <Field
-        label={t("amFinance.leaveDays")}
-        value={leaveStr}
-        onChangeText={(leaveStr) =>
-          setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, leaveStr } }))
-        }
-        borderColor={borderColor}
-        surfaceColor={surfaceColor}
-        textColor={textColor}
-        textSecondaryColor={textSecondaryColor}
-        numberGrouping="integer"
-      />
-      <View style={styles.switchRow}>
-        <ThemedText
-          style={[{ color: textColor }, styles.switchLabelText]}
-          numberOfLines={4}
-          ellipsizeMode="tail"
-        >
-          {workingDayBasis ? t("amFinance.basisWorkingDays") : t("amFinance.basisCalendarDays")}
-        </ThemedText>
-        <Switch
-          style={styles.switchControl}
-          value={workingDayBasis}
-          onValueChange={(workingDayBasis) =>
-            setDraft((d) => ({ ...d, paidLeave: { ...d.paidLeave, workingDayBasis } }))
-          }
-        />
-      </View>
-
-      {result ? (
+      {basisMode === "twelveMonth" ? (
         <>
-          <ThemedText
-            type="defaultSemiBold"
-            numberOfLines={3}
-            ellipsizeMode="tail"
-            style={{ color: textColor, marginTop: 8 }}
-          >
-            {t("amFinance.monthlyTitle")}
-          </ThemedText>
-          <BreakdownRows b={result.monthlyBreakdown} t={t} textColor={textColor} textSecondaryColor={textSecondaryColor} />
+          <Field
+            label={t("amFinance.paidLeave.variablePay")}
+            value={variablePayStr}
+            onChangeText={(variablePayStr) => patch({ variablePayStr })}
+            borderColor={borderColor}
+            surfaceColor={surfaceColor}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+            numberGrouping="integer"
+          />
+          <Field
+            label={t("amFinance.paidLeave.countingMonths")}
+            value={countingMonthsStr}
+            onChangeText={(countingMonthsStr) => patch({ countingMonthsStr })}
+            borderColor={borderColor}
+            surfaceColor={surfaceColor}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+            numberGrouping="integer"
+          />
+        </>
+      ) : null}
+      {sharedAverage ? (
+        <>
           <ThemedText
             type="defaultSemiBold"
             numberOfLines={2}
             ellipsizeMode="tail"
             style={{ color: textColor, marginTop: 16 }}
           >
-            {t("amFinance.results")}
+            {t("amFinance.leavePay.sharedAverage")}
           </ThemedText>
           <View style={{ gap: 6, marginTop: 8 }}>
-            <RowKV label={t("amFinance.gross")} value={formatAmd(result.monthlyGross)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("amFinance.net")} value={formatAmd(result.monthlyNet)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("amFinance.averageDailyGross")} value={formatAmd(result.averageDailyGross)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("amFinance.averageDailyNet")} value={formatAmd(result.averageDailyNet)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("amFinance.paidLeaveGross")} value={formatAmd(result.leaveGross)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
-            <RowKV label={t("amFinance.paidLeaveNet")} value={formatAmd(result.leaveNet)} textColor={textColor} textSecondaryColor={textSecondaryColor} />
+            {basisMode === "twelveMonth" ? (
+              <RowKV
+                label={t("amFinance.paidLeave.totalRemuneration")}
+                value={formatAmd(sharedAverage.totalRemunerationGross)}
+                textColor={textColor}
+                textSecondaryColor={textSecondaryColor}
+              />
+            ) : null}
+            <RowKV
+              label={t("amFinance.paidLeave.averageMonthly")}
+              value={formatAmd(sharedAverage.averageMonthlyGross)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
+            <RowKV
+              label={t("amFinance.averageDailyGross")}
+              value={formatAmd(sharedAverage.averageDailyGross)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
           </View>
-          <ThemedText type="caption" numberOfLines={8} style={{ color: textSecondaryColor, marginTop: 12 }}>
+        </>
+      ) : null}
+
+      <Field
+        label={t("amFinance.leaveDays")}
+        value={leaveStr}
+        onChangeText={(leaveStr) => patch({ leaveStr })}
+        borderColor={borderColor}
+        surfaceColor={surfaceColor}
+        textColor={textColor}
+        textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
+      />
+
+      {vacationResult ? (
+        <>
+          <ThemedText
+            type="defaultSemiBold"
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            style={{ color: textColor, marginTop: 16 }}
+          >
+            {t("amFinance.leavePay.vacationSection")}
+          </ThemedText>
+          <View style={{ gap: 6, marginTop: 8 }}>
+            <RowKV
+              label={t("amFinance.paidLeaveGross")}
+              value={formatAmd(vacationResult.leaveGross)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
+            <RowKV
+              label={t("amFinance.paidLeaveNet")}
+              value={formatAmd(vacationResult.leaveNet)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
+          </View>
+          <BreakdownRows
+            b={vacationResult.leaveBreakdown}
+            t={t}
+            textColor={textColor}
+            textSecondaryColor={textSecondaryColor}
+          />
+          <ThemedText type="caption" numberOfLines={6} style={{ color: textSecondaryColor, marginTop: 8 }}>
             {t("amFinance.paidLeave.note")}
           </ThemedText>
-          <TouchableOpacity
-            style={[styles.shareRow, { marginTop: 16 }]}
-            onPress={() =>
-              void shareLines([
-                t("amFinance.card.paidLeave"),
-                `${t("amFinance.paidLeaveGross")}: ${formatAmd(result.leaveGross)}`,
-                `${t("amFinance.paidLeaveNet")}: ${formatAmd(result.leaveNet)}`,
-              ])
-            }
-          >
-            <Ionicons name="share-outline" size={20} color={primaryColor} />
-            <ThemedText
-              numberOfLines={2}
-              ellipsizeMode="tail"
-              style={[styles.shareRowLabel, { color: primaryColor, fontWeight: "600" }]}
-            >
-              {t("amFinance.shareSummary")}
-            </ThemedText>
-          </TouchableOpacity>
         </>
-      ) : (
-        <ThemedText style={{ color: textSecondaryColor }}>{t("amFinance.errors.invalid")}</ThemedText>
-      )}
+      ) : null}
+
+      <Field
+        label={t("amFinance.disability.sickDays")}
+        value={sickDaysStr}
+        onChangeText={(sickDaysStr) => patch({ sickDaysStr })}
+        borderColor={borderColor}
+        surfaceColor={surfaceColor}
+        textColor={textColor}
+        textSecondaryColor={textSecondaryColor}
+        numberGrouping="integer"
+      />
+
+      {sickResult ? (
+        <>
+          <ThemedText
+            type="defaultSemiBold"
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            style={{ color: textColor, marginTop: 16 }}
+          >
+            {t("amFinance.leavePay.sickSection")}
+          </ThemedText>
+          <View style={{ gap: 6, marginTop: 8 }}>
+            <RowKV
+              label={t("amFinance.disability.unpaidFirstDay")}
+              value={String(sickResult.unpaidDays)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
+            <RowKV
+              label={t("amFinance.disability.paidDays")}
+              value={String(sickResult.paidWorkingDays)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
+            <RowKV
+              label={t("amFinance.disability.employerPays")}
+              value={formatAmd(sickResult.employerBenefitGross)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
+            <RowKV
+              label={t("amFinance.disability.statePays")}
+              value={formatAmd(sickResult.stateBenefitGross)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
+            <RowKV
+              label={t("amFinance.disability.totalBenefit")}
+              value={formatAmd(sickResult.totalBenefitGross)}
+              textColor={textColor}
+              textSecondaryColor={textSecondaryColor}
+            />
+          </View>
+          <ThemedText type="caption" numberOfLines={8} style={{ color: textSecondaryColor, marginTop: 8 }}>
+            {t("amFinance.disability.note")}
+          </ThemedText>
+        </>
+      ) : null}
+
+      {!sharedAverage && !vacationResult && !sickResult ? (
+        <ThemedText style={{ color: textSecondaryColor, marginTop: 12 }}>
+          {t("amFinance.errors.invalid")}
+        </ThemedText>
+      ) : null}
+
+      {sharedAverage && (vacationResult || sickResult) ? (
+        <TouchableOpacity
+          style={[styles.shareRow, { marginTop: 16 }]}
+          onPress={() => {
+            const lines = [t("amFinance.card.leavePay")];
+            if (vacationResult) {
+              lines.push(
+                `${t("amFinance.paidLeaveGross")}: ${formatAmd(vacationResult.leaveGross)}`
+              );
+            }
+            if (sickResult) {
+              lines.push(
+                `${t("amFinance.disability.totalBenefit")}: ${formatAmd(sickResult.totalBenefitGross)}`
+              );
+            }
+            void shareLines(lines);
+          }}
+        >
+          <Ionicons name="share-outline" size={20} color={primaryColor} />
+          <ThemedText
+            numberOfLines={2}
+            ellipsizeMode="tail"
+            style={[styles.shareRowLabel, { color: primaryColor, fontWeight: "600" }]}
+          >
+            {t("amFinance.shareSummary")}
+          </ThemedText>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -1119,6 +1366,7 @@ function SalaryView({
         textColor={textColor}
         textSecondaryColor={textSecondaryColor}
         numberGrouping="integer"
+        hint={knowGross ? t("amFinance.monthlySalary.hint") : undefined}
       />
 
       {result ? (

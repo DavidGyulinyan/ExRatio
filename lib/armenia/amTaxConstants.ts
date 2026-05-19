@@ -25,9 +25,19 @@ export const AM_TAX_CONSTANTS = {
   HEALTH_LOW_AMD: 4_800,
   HEALTH_HIGH_AMD: 10_800,
 
-  /** Divisor for average daily pay from monthly (working-day basis — common for leave). */
-  WORKING_DAYS_PER_MONTH_FOR_LEAVE: 21.75,
-  /** Calendar-day divisor sometimes used for benefits. */
+  /** Art. 195 §3 — average daily pay, five-day workweek. */
+  LEAVE_AVG_DAILY_DIVISOR_FIVE_DAY: 21,
+  /** Art. 195 §3 — average daily pay, six-day workweek. */
+  LEAVE_AVG_DAILY_DIVISOR_SIX_DAY: 25,
+
+  /**
+   * Temporary disability (sick leave): employer pays benefit for this many working days
+   * after the unpaid first day (Law on Temporary Disability Benefits, Art. 6).
+   */
+  DISABILITY_EMPLOYER_PAID_WORKING_DAYS: 3,
+  /** @deprecated Use LEAVE_AVG_DAILY_DIVISOR_FIVE_DAY. */
+  WORKING_DAYS_PER_MONTH_FOR_LEAVE: 21,
+  /** Calendar-day divisor used for maternity benefit illustration. */
   CALENDAR_DAYS_PER_MONTH: 30,
 
   /** Withholding tax on bank deposit interest for individuals (verify annually). */

@@ -5,7 +5,7 @@ export type PayrollBreakdown = {
   pensionEmployee: number;
   militaryStamp: number;
   mandatoryHealth: number;
-  /** PIT base after pension (simplified model; confirm with annual tax guidance). */
+  /** PIT base for monthly withholding (20% of gross per typical RA payslip practice). */
   taxableIncomeForIncomeTax: number;
   incomeTax: number;
   totalEmployeeDeductions: number;
@@ -44,7 +44,8 @@ export function payrollBreakdownFromGross(grossSalary: number): PayrollBreakdown
   const pensionEmployee = employeePensionMonthly(g);
   const militaryStamp = militaryStampMonthly(g);
   const mandatoryHealth = mandatoryHealthMonthly(g);
-  const taxableIncomeForIncomeTax = Math.max(0, g - pensionEmployee);
+  // RA payroll sheets commonly withhold 20% PIT on full gross (pension is separate).
+  const taxableIncomeForIncomeTax = g;
   const incomeTax = taxableIncomeForIncomeTax * C.INCOME_TAX_RATE;
   const totalEmployeeDeductions = pensionEmployee + militaryStamp + mandatoryHealth + incomeTax;
   const netSalary = Math.max(0, g - totalEmployeeDeductions);
