@@ -28,6 +28,7 @@
     },
 
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/app-android-foreground.png",
@@ -62,7 +63,6 @@
 
     "plugins": [
       "expo-router",
-      "expo-notifications",
       "expo-updates",
       [
         "expo-splash-screen",
@@ -87,18 +87,10 @@
     },
 
     "extra": {
-      "supabaseUrl": "https://jprafkemftjqrzsrtuui.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwcmFma2VtZnRqcXJ6c3J0dXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1MzE0NDQsImV4cCI6MjA3ODEwNzQ0NH0.sUFyszymQ-oQiGUgNY-qsKx8ND22l0Qjg4Ld8BMd77E",
       "router": {},
       "eas": {
         "projectId": "0e05b89a-80f4-4868-b91e-3009f1bcf007"
       }
-    },
-
-    "notifications": {
-      "icon": "./assets/images/app-notification-icon.png",
-      "color": "#F07E25",
-      "iosDisplayInForeground": true
     },
 
     "runtimeVersion": {
@@ -106,8 +98,7 @@
     },
 
     "updates": {
-      "url": "https://u.expo.dev/0e05b89a-80f4-4868-b91e-3009f1bcf007",
-      "channel": "preview"
+      "url": "https://u.expo.dev/0e05b89a-80f4-4868-b91e-3009f1bcf007"
     }
   }
 }

@@ -1,22 +1,45 @@
 {
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "development"
+    },
     "preview": {
+      "distribution": "internal",
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       },
-      "channel": "main",
+      "channel": "preview",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://v6.exchangerate-api.com/v6/"
       }
     },
     "production": {
+      "distribution": "store",
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "autoIncrement": true
       },
-      "channel": "main",
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://v6.exchangerate-api.com/v6/"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

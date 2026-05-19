@@ -1,248 +1,215 @@
-# Capital - Real-time Currency Converter 📱
+# Capital
 
-A modern, user-friendly mobile currency converter app built with React Native and Expo. Get real-time exchange rates for 160+ currencies with a clean, intuitive interface.
+**Capital** is a React Native (Expo) app for live currency conversion, rate tracking, and Armenia-focused salary and finance calculators. The home screen is a customizable dashboard; conversion and tools open as modals or inline panels.
 
-![Capital Preview](https://via.placeholder.com/300x600/2563eb/ffffff?text=Capital+App)
+Package name: `exratio-mobile` · Expo slug: `ratesnap-mobile`
 
-## ✨ Features
+## Features
 
-- **Real-time Currency Conversion** - Live exchange rates updated hourly
-- **160+ Currencies Supported** - Comprehensive currency coverage
-- **Interactive Currency Selection** - Search and select currencies with ease
-- **Save Favorite Rates** - Store frequently used exchange rates
-- **Conversion History** - Track your conversion history locally
-- **Cross-Platform** - Works on iOS, Android, and Web
-- **Offline Ready** - Local storage for saved rates and history
-- **Modern UI** - Clean, responsive design with smooth animations
-- **Location Detection** - Automatically detect user's home currency
-- **Math Calculator** - Built-in calculator for complex conversions
-- **Themed Interface** - Dark/light theme support
+### Currency & rates
 
-## 🚀 Getting Started
+- **Currency converter** — fiat pairs with live rates, recent pair history, optional share text
+- **Central Bank of Armenia (CBA) rates** — official AMD cross-rates for a defined foreign-currency subset, merged with the primary live API where applicable
+- **Multi-currency view** — compare several targets against one base amount
+- **Saved rates** — favorite pairs (local; synced to Supabase when signed in)
+- **Rate alerts** — target rate above/below with push notifications
+- **Rate charts** — historical-style charts for selected pairs
+- **Offline-friendly** — cached exchange rates in AsyncStorage when the network fails
+
+### Tools (dashboard)
+
+Reorderable quick-action tiles (long-press reorder mode):
+
+- Math **calculator** (expression evaluation via mathjs, history)
+- **Tourist calculator**
+- **Loan calculator**
+
+### RA: Salary & finance
+
+Illustrative calculators aligned with Armenian labor and tax practice (not legal advice):
+
+- **Vacation & sick pay** — shared 12-month average salary; annual leave (Labor Code) and temporary disability benefit (sick leave) on one screen
+- **Maternity / pregnancy leave** — illustrative benefit estimate
+- **Salary** — gross ↔ net with pension, military stamp, health, and income tax (PIT on gross, matching typical payslip withholding)
+- **Deposit** — interest growth with optional tax on profit
+- **Loan calculator** (also on dashboard)
+
+Form drafts persist locally; signed-in users sync some data via Supabase.
+
+### RA: Freelance & tax
+
+- Sole proprietor regimes, turnover tax, profit tax, VAT helper
+- **Invoice** draft builder with reminders
+
+### RA: Transport
+
+- Vehicle **customs clearance** estimate (illustrative)
+- Vehicle **sale** income-tax worksheet
+
+### Account & app
+
+- **Sign up / sign in** — Supabase Auth (email; OAuth where configured)
+- **Optional app lock** — biometric unlock (Face ID / device biometrics)
+- **Languages** — Armenian (default), English, Russian
+- **Theme** — light / dark / system
+- **Onboarding** guide for new users
+- **Settings** — language, theme, notifications, saved/picked rates, terms, privacy policy, contact support, account deletion
+- **EAS Update** — over-the-air updates via Expo (`expo-updates`)
+
+## Tech stack
+
+| Area | Stack |
+|------|--------|
+| Framework | [Expo](https://expo.dev) SDK 54, [Expo Router](https://docs.expo.dev/router/introduction/) |
+| UI | React Native 0.81, React 19 |
+| Language | TypeScript |
+| Backend / auth | [Supabase](https://supabase.com) (auth, user data) |
+| Live rates | ExchangeRate-API (or compatible URL) + CBA feed |
+| Local storage | AsyncStorage, Secure Store (app lock) |
+| Charts | react-native-chart-kit |
+| Math | mathjs |
+
+State is handled with React contexts (`AuthContext`, `LanguageContext`, `ThemeContext`, `AppLockContext`) and hooks—not Zustand.
+
+## Project structure
+
+```
+ratesnap-mobile/
+├── app/                      # Expo Router screens
+│   ├── (tabs)/
+│   │   ├── index.tsx         # Home dashboard
+│   │   └── settings.tsx      # Settings
+│   ├── signin.tsx, signup.tsx, forgot-password.tsx, reset-password.tsx
+│   ├── auth/callback.tsx     # OAuth / email redirect
+│   └── guide.tsx             # Onboarding
+├── components/               # UI (converter, modals, calculators, …)
+├── contexts/                 # Auth, language, theme, app lock
+├── hooks/                    # Theme colors, user data hooks
+├── lib/
+│   ├── armenia/              # Payroll, leave, deposit, freelance, vehicle tax
+│   ├── cbaExchangeRates.ts   # CBA rate fetch & filtering
+│   ├── liveExchangeRates.ts  # Primary API + CBA merge
+│   ├── userDataService.ts    # Supabase user data
+│   └── legal/                # Privacy policy text (en / hy / ru)
+├── constants/                # Theme tokens
+├── tests/                    # Jest unit tests
+├── assets/                   # Icons, splash, images
+└── app.json                  # Expo config (name: Capital)
+```
+
+## Getting started
 
 ### Prerequisites
 
-- Node.js (v18 or later)
-- npm or yarn
-- Expo CLI (`npm install -g @expo/cli`)
+- Node.js 18+
+- npm
+- [Expo CLI](https://docs.expo.dev/get-started/installation/) (or use `npx expo`)
+- For device builds: [EAS CLI](https://docs.expo.dev/build/setup/) (`npm i -g eas-cli`)
 
-### Installation
+### Install & run
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/capital-mobile.git
-   cd capital-mobile
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-
-   Create a `.env` file in the root directory:
-   ```env
-   EXPO_PUBLIC_API_URL=https://v6.exchangerate-api.com/v6/
-   EXPO_PUBLIC_API_KEY=your_api_key_here
-   ```
-
-   Get your free API key from [ExchangeRate-API](https://www.exchangerate-api.com/)
-
-4. **Start the development server**
-   ```bash
-   npx expo start
-   ```
-
-5. **Run on your device**
-
-   - **iOS Simulator**: Press `i` in the terminal
-   - **Android Emulator**: Press `a` in the terminal
-   - **Physical Device**: Scan QR code with Expo Go app
-   - **Web**: Press `w` in the terminal
-
-## 📱 Usage
-
-### Basic Conversion
-1. Enter the amount you want to convert
-2. Tap "From" to select the source currency
-3. Tap "To" to select the target currency
-4. View the converted amount instantly
-
-### Saving Rates
-- Tap "Save This Rate" to store frequently used conversions
-- Access saved rates in the expandable "Saved Rates" section
-- Tap any saved rate to quickly load it for conversion
-
-### Managing History
-- Your conversion history is automatically saved locally
-- Recently used currencies appear first in the selection lists
-
-### Location Detection
-- The app automatically detects your location and sets your home currency
-- You can manually change the home currency in settings
-- Currency flags help you quickly identify currencies
-
-### Theme Support
-- Toggle between dark and light themes
-- Theme preference is saved locally
-- Smooth transitions between theme changes
-
-## 🏗️ Project Structure
-
-```
-capital-mobile/
-├── app/                    # App screens (file-based routing)
-│   ├── _layout.tsx        # Root layout
-│   ├── modal.tsx          # Modal screens
-│   └── (tabs)/            # Tab navigation
-│       ├── _layout.tsx    # Tab layout
-│       ├── index.tsx      # Main converter screen
-│       └── explore.tsx    # About/Info screen
-├── components/            # Reusable components
-│   ├── CurrencyConverter.tsx  # Main converter component
-│   ├── CurrencyPicker.tsx     # Currency selection modal
-│   ├── CurrencyFlag.tsx       # Currency flag display
-│   ├── LocationDetection.tsx  # Location-based currency detection
-│   ├── MathCalculator.tsx     # Built-in calculator
-│   ├── ThemeToggle.tsx        # Theme switcher
-│   ├── themed-text.tsx        # Themed text component
-│   ├── themed-view.tsx        # Themed view component
-│   └── ui/               # UI components
-├── stores/               # State management
-│   └── presetStore.ts     # App state and settings
-├── lib/                  # External integrations
-│   ├── supabase.ts          # Supabase client (if needed)
-│   └── providers/           # API providers
-│       ├── ExchangeRatesAPIProvider.ts
-│       ├── ProviderInterface.ts
-│       └── ExRatioProvider.ts
-├── hooks/               # Custom React hooks
-│   ├── use-color-scheme.ts  # Theme detection
-│   └── use-theme-color.ts   # Theme colors
-├── contexts/            # React contexts
-│   └── ThemeContext.tsx     # Theme management
-├── constants/           # App constants
-│   └── theme.ts            # Theme definitions
-├── styles/              # Styling utilities
-│   └── theme.ts            # Theme styles
-├── utils/                # Utility functions
-│   ├── featureFlags.ts   # Feature flag management
-│   └── supabaseFallback.ts # Supabase utilities
-├── supabase/             # Database configuration (optional)
-│   └── migrations/          # Database migration files
-├── tests/                # Unit tests
-├── assets/              # Images and static assets
-└── scripts/             # Utility scripts
+```bash
+git clone <your-repo-url>
+cd ratesnap-mobile
+npm install
 ```
 
-## 🛠️ Technologies Used
+Create a `.env` in the project root (values are also fallbacks in `app.json` `extra` for Supabase in dev):
 
-- **React Native** - Cross-platform mobile development
-- **Expo** - Development platform and build tools
-- **TypeScript** - Type-safe JavaScript
-- **Zustand** - Lightweight state management
-- **AsyncStorage** - Local data persistence
-- **ExchangeRate-API** - Real-time currency data
-- **React Navigation** - Navigation system
+```env
+# Live exchange rates (required for converter)
+EXPO_PUBLIC_API_URL=https://v6.exchangerate-api.com/v6/
+EXPO_PUBLIC_API_KEY=your_exchange_rate_api_key
 
-## 📋 API Reference
+# Supabase (required for sign-in and cloud sync)
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
-This app uses the [ExchangeRate-API](https://www.exchangerate-api.com/) for currency data.
+# Optional: stable redirect for email / OAuth (recommended for production)
+# EXPO_PUBLIC_AUTH_EMAIL_REDIRECT=https://your-domain.com/auth/callback
+```
 
-- **Base URL**: `https://v6.exchangerate-api.com/v6/`
-- **Endpoints**: Latest rates, conversion rates
-- **Update Frequency**: Hourly
+Start the dev server:
 
-### Supported Providers
+```bash
+npx expo start
+```
 
-The app supports multiple exchange rate providers:
-- **ExchangeRate-API** (Primary)
-- **Fallback Provider** (Fallback)
+- **iOS simulator**: `i`
+- **Android emulator**: `a`
+- **Expo Go**: scan QR code
+- **Web**: `w` (limited; some native features unavailable)
 
-Providers can be configured in the settings and will automatically switch if the primary provider is unavailable.
+### Exchange rate API
 
-## 🧪 Testing
+Sign up at [ExchangeRate-API](https://www.exchangerate-api.com/) (or point `EXPO_PUBLIC_API_URL` / `EXPO_PUBLIC_API_KEY` at another compatible provider). CBA rates are fetched separately and do not use this key.
 
-Run the test suite:
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | `expo start` — dev server |
+| `npm run android` | Run on Android |
+| `npm run ios` | Run on iOS |
+| `npm run web` | Run in browser |
+| `npm test` | Jest tests |
+| `npm run lint` | ESLint (Expo config) |
+
+## Testing
 
 ```bash
 npm test
 ```
 
-The project includes:
-- Unit tests for currency conversion logic
-- Component testing with React Testing Library
-- Integration tests for the conversion workflow
+Tests cover calculator evaluation, Armenian payroll/leave logic, exchange-rate helpers, and related utilities. Some suites need the Expo Jest preset; if a test fails with Expo winter runtime errors, run individual files under `tests/` or fix `jest` / `jest-expo` setup.
 
-## 🚀 Deployment
+## Building & updates
 
-### Building for Production
+### Google Play Store
 
-1. **Build for iOS**
-   ```bash
-   eas build --platform ios
-   ```
+See **[docs/PLAY_STORE.md](docs/PLAY_STORE.md)** for the full checklist (EAS secrets, AAB build, signing, submit).
 
-2. **Build for Android**
-   ```bash
-   eas build --platform android
-   ```
+```bash
+# Production AAB for Play Store
+npm run build:android
 
-3. **Build for Web**
-   ```bash
-   npx expo export:web
-   ```
-
-### Environment Variables for Production
-
-Ensure these variables are set in your production environment:
-```env
-EXPO_PUBLIC_API_KEY=your_production_api_key
-EXPO_PUBLIC_API_URL=https://v6.exchangerate-api.com/v6/
+# Upload latest AAB (after service account is configured)
+npm run submit:android
 ```
 
-## 🤝 Contributing
+### iOS / general
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+```bash
+eas build --platform ios --profile production
+```
 
-### Development Guidelines
+OTA updates (production channel):
 
-- Follow TypeScript best practices
-- Add tests for new features
-- Update documentation for API changes
-- Ensure cross-platform compatibility
+```bash
+eas update --channel production --message "Your update notes"
+```
 
-## 📄 License
+Set `EXPO_PUBLIC_API_KEY` and Supabase variables as [EAS project secrets](https://docs.expo.dev/build-reference/variables/#using-secrets-in-environment-variables); copy `.env.example` to `.env` for local dev.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Important disclaimers
 
-## 🙏 Acknowledgments
+- Exchange rates and CBA attribution are for information only; verify amounts before financial decisions.
+- Armenia salary, leave, freelance, and transport calculators are **illustrative** models. Rules change; confirm with your employer, accountant, or official sources.
+- Privacy policy and terms are available in-app (Settings) in Armenian, English, and Russian.
 
-- [ExchangeRate-API](https://www.exchangerate-api.com/) for providing free currency data
-- [Expo](https://expo.dev) for the amazing development platform
-- [React Native](https://reactnative.dev) community
+## Contributing
 
-## 📞 Support
+1. Fork the repository  
+2. Create a feature branch  
+3. Add tests when changing calculation or rate logic  
+4. Open a pull request  
 
-If you have any questions or issues:
+## License
 
-- Create an [issue](https://github.com/yourusername/exratio-mobile/issues) on GitHub
-- Check the [Terms of Use](https://docs.google.com/document/d/e/2PACX-1vSqgDzlbEnxw-KoCS6ecj_tGzjSlkxDc7bUBMwzor65LKNLTEqzxm4q2iVvStCkmzo4N6dnVlcRGRuo/pub) for app usage guidelines
+Private project — add a `LICENSE` file if you intend to open-source.
 
-## 📝 Changelog
+## Acknowledgments
 
-### v2.0.0 - Streamlined Release
-- **Improved**: Core currency conversion performance
-- **Enhanced**: Cleaner, more maintainable codebase
-- **Added**: Enhanced theme system with smooth transitions
-- **Added**: Location-based currency detection
-- **Added**: Built-in calculator functionality
-
----
-
-**Made with ❤️ for seamless currency conversion**
+- [ExchangeRate-API](https://www.exchangerate-api.com/) — live fiat rates  
+- [Central Bank of Armenia](https://www.cba.am/) — official rate data  
+- [Expo](https://expo.dev) · [Supabase](https://supabase.com)
